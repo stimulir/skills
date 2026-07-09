@@ -1,0 +1,12 @@
+[project]
+name = "byok-register"
+version = "0.1.0"
+description = "Register and verify an adopter's own provider API key with Stimulir (bring-your-own-key) -- thin wrappers around the `stimulir byok` CLI, no direct network calls."
+requires-python = ">=3.10"
+dependencies = []
+
+[tool.uv]
+dev-dependencies = [
+    "pytest>=8.0",
+    "ruff>=0.5",
+]

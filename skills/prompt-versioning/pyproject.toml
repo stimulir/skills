@@ -1,0 +1,12 @@
+[project]
+name = "prompt-versioning"
+version = "0.1.0"
+description = "Manage prompts as versioned, labeled assets via the stimulir CLI -- create/update versions, promote a version to an environment label, resolve by key+label. No direct network calls; helpers shell out to the stimulir CLI."
+requires-python = ">=3.10"
+dependencies = []
+
+[tool.uv]
+dev-dependencies = [
+    "pytest>=8.0",
+    "ruff>=0.5",
+]

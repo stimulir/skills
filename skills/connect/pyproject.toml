@@ -1,0 +1,12 @@
+[project]
+name = "connect"
+version = "0.1.0"
+description = "Stage 0 stimulir client onboarding -- install/auth/workspace checks and a real inference + usage smoke test, wrapping the stimulir CLI. Standard library only."
+requires-python = ">=3.10"
+dependencies = []
+
+[tool.uv]
+dev-dependencies = [
+    "pytest>=8.0",
+    "ruff>=0.5",
+]

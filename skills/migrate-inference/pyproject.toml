@@ -1,0 +1,12 @@
+[project]
+name = "migrate-inference"
+version = "0.1.0"
+description = "Detect direct OpenAI/Anthropic SDK and raw-HTTP call sites in an adopter's own codebase and report them for the agent to rewire onto stimulir's OpenAI-compatible inference gateway -- pure standard library, no runtime dependencies."
+requires-python = ">=3.10"
+dependencies = []
+
+[tool.uv]
+dev-dependencies = [
+    "pytest>=8.0",
+    "ruff>=0.5",
+]

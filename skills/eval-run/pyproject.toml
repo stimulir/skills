@@ -1,0 +1,12 @@
+[project]
+name = "eval-run"
+version = "0.1.0"
+description = "Compare a prompt/model change against a curated dataset before promoting to production -- thin CLI wrapper around 'stimulir lab eval create-run' plus read-only status polling. Stdlib only, no direct REST/SDK auth."
+requires-python = ">=3.10"
+dependencies = []
+
+[tool.uv]
+dev-dependencies = [
+    "pytest>=8.0",
+    "ruff>=0.5",
+]

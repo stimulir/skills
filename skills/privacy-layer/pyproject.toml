@@ -1,0 +1,14 @@
+[project]
+name = "privacy-layer"
+version = "0.1.0"
+description = "Redact/mask PII in agent-collected text before it's persisted as a data asset or forwarded to a model -- CPU-only, real hosted calls to Stimulir's privacy endpoints, no GPU/model-weight cost."
+requires-python = ">=3.10"
+dependencies = [
+    "httpx>=0.27",
+]
+
+[tool.uv]
+dev-dependencies = [
+    "pytest>=8.0",
+    "ruff>=0.5",
+]

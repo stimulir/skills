@@ -1,0 +1,18 @@
+{
+  "name": "stimulir-skills",
+  "version": "0.1.0",
+  "description": "Stimulir Skills — client-onboarding agent skills for integrating the Stimulir AI gateway.",
+  "repository": "https://github.com/stimulir/skills",
+  "keywords": ["stimulir", "ai-gateway", "onboarding", "inference", "byok", "privacy", "data-assets", "eval", "prompts", "usage"],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Stimulir Skills",
+    "category": "Integration",
+    "capabilities": ["Read", "Write"],
+    "defaultPrompt": [
+      "Connect this project to Stimulir and run a smoke test",
+      "Migrate our OpenAI calls to route through Stimulir's gateway",
+      "Set up PII redaction before we capture traces"
+    ]
+  }
+}
