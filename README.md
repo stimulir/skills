@@ -17,7 +17,7 @@ onto the gateway, then turn the feedback loop on.
 | Stage | Skill | What it does |
 |---|---|---|
 | 0 — Connect | [`connect`](./skills/connect/) | Install the CLI, authenticate, create a workspace-scoped key, send one real inference call, confirm the cost shows up. Minutes, not hours. |
-| 1 — Migrate | [`migrate-inference`](./skills/migrate-inference/) | Scan your own codebase for direct OpenAI/Anthropic calls and rewire them onto Stimulir's OpenAI-compatible gateway endpoint. |
+| 1 — Migrate | [`migrate-inference`](./skills/migrate-inference/) | Scan your own codebase for direct OpenAI/Anthropic calls and rewire them onto Stimulir — the Stimulir Python SDK (`StimulirClient`) is the preferred landing point; the OpenAI-compatible `base_url` swap is the fallback for non-Python code. |
 | 1 — Migrate (alt) | [`byok-register`](./skills/byok-register/) | Keep your existing provider contract — register your own key with Stimulir instead of switching to managed inference. |
 | 2 — Flywheel | [`capture-traces`](./skills/capture-traces/) | Turn live traffic into curated data assets (Raw → Cleaning → Clean View → Snapshot). This is the mechanism behind "gets sharper as it runs." |
 | 2 — Flywheel | [`privacy-layer`](./skills/privacy-layer/) | Redact/mask PII before it's captured or forwarded — sequence this *before* `capture-traces`, since captured traces become future training data. |
@@ -94,6 +94,14 @@ A few skills call the Stimulir API directly instead: `privacy-layer`
 same env var for the adopter's own post-migration code, but the skill
 itself makes no network calls. Where noted in a skill's own `install.md`,
 `STIMULIR_API_BASE` / `STIMULIR_PROJECT_ID` apply too.
+
+For the **adopter's application code** these skills steer to the
+**Stimulir Python SDK** (`pip install stimulir` → `StimulirClient`):
+`client.agent(...)` for one-shots, `client.request("POST",
+"/api/v1/inference/chat/completions", json_body={...})` with a full
+`messages` array for system prompts + conversation history, plus prompts,
+data assets, and eval runs from the same client. The OpenAI-SDK
+`base_url` swap remains available for non-Python codebases.
 
 ## Repo layout
 

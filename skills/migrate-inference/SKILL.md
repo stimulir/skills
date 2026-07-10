@@ -1,6 +1,6 @@
 ---
 name: migrate-inference
-description: Find direct LLM provider SDK/HTTP calls (OpenAI, Anthropic) inside an ADOPTER'S OWN application codebase and rewire them onto stimulir's OpenAI-compatible inference gateway. Use when a user wants to migrate/point their existing app's LLM calls at stimulir, add stimulir as an inference provider to a project that already calls OpenAI or Anthropic directly, or audit a repo for hardcoded provider API usage before a gateway migration.
+description: Find direct LLM provider SDK/HTTP calls (OpenAI, Anthropic) inside an ADOPTER'S OWN application codebase and rewire them onto stimulir — preferring the Stimulir Python SDK (StimulirClient) as the landing point, with the OpenAI-compatible base_url swap as the fallback for non-Python or must-stay-OpenAI-shaped code. Use when a user wants to migrate/point their existing app's LLM calls at stimulir, add stimulir as an inference provider to a project that already calls OpenAI or Anthropic directly, or audit a repo for hardcoded provider API usage before a gateway migration.
 ---
 
 # Migrate Inference
@@ -79,12 +79,76 @@ where each hit is `{file, line, pattern, category, snippet}`. This is a
 **report for the agent to act on**, not an auto-fixer — read every hit
 before touching anything.
 
-### 2. For each `openai-sdk-compatible` hit: base_url + api_key swap
+### 2. Default for Python call sites: migrate to the Stimulir SDK
 
-This is the lowest-friction migration path that exists. Because stimulir's
-gateway speaks the OpenAI request/response shape verbatim (`messages`,
-`model`, `stream` fields, same response envelope), **the OpenAI SDK client
-object itself does not change** — only its two construction arguments do.
+**This is the preferred landing point for every Python hit** — OpenAI-SDK,
+Anthropic-SDK, or raw-HTTP alike. The Stimulir SDK is the first-class
+integration surface: it carries workspace/project scope on the `hyb_*` key
+(no headers to hand-roll), attaches `tags` for trace attribution, and the
+same client object later drives prompts, data assets, and eval runs when the
+adopter turns the flywheel on (`capture-traces`, `eval-run`) — none of which
+the redirected OpenAI SDK can reach.
+
+```bash
+pip install stimulir        # or: uv add stimulir
+```
+
+```python
+from stimulir import StimulirClient
+
+client = StimulirClient()   # reads STIMULIR_API_KEY / STIMULIR_API_BASE / STIMULIR_PROJECT_ID
+
+# One-shot prompt — simplest call shape:
+result = client.agent(
+    prompt="Summarize this ticket.",
+    model="stimulir/claude-sonnet-4-6",
+    tags=["support-triage"],
+)
+print(result.content)       # AgentResponse: .content .status .cost .token_usage .error
+```
+
+For a **system prompt + multi-turn conversation history** (the common
+production shape), send the full OpenAI-compatible `messages` array through
+the same client — `client.agent()` is deliberately a one-shot helper, not
+the multi-turn path:
+
+```python
+resp = client.request("POST", "/api/v1/inference/chat/completions", json_body={
+    "model": "stimulir/claude-sonnet-4-6",
+    "messages": [
+        {"role": "system",    "content": "You are a concise assistant."},
+        {"role": "user",      "content": "earlier question"},
+        {"role": "assistant", "content": "earlier answer"},
+        {"role": "user",      "content": "follow-up"},
+    ],
+    "max_tokens": 800,
+})
+print(resp["choices"][0]["message"]["content"])
+```
+
+Model-id guidance when rewriting call sites:
+
+- `stimulir/claude-sonnet-4-6` / `stimulir/claude-opus-4-6` — managed
+  frontier Claude on Stimulir's own capacity; no provider key needed.
+- `stimulir/fusion` / `stimulir/fusion-max` — panel+judge virtual models.
+- `zai-org/GLM-5.2`, `moonshotai/Kimi-K2.6`, `MiniMaxAI/MiniMax-M2.5`,
+  `Qwen/Qwen2.5-VL-72B-Instruct` — managed open models.
+- Bare vendor ids (`claude-sonnet-4-6`, `gpt-4o`, `gemini-2.5-pro`) route
+  through the workspace's own BYOK credential when one is registered (see
+  `byok-register`); without one they fall to Stimulir's managed floor.
+- Set `max_tokens` generously (≥800): several managed models are reasoning
+  models, and a tight cap can be consumed by reasoning before any visible
+  output is emitted.
+
+### 3. Fallback: OpenAI-compatible base_url + api_key swap
+
+Use this instead of step 2 when the call site **cannot adopt the Stimulir
+SDK**: non-Python codebases (Node/TS, Go, Ruby — the Stimulir SDK is
+Python-only today), or Python code that must stay provider-agnostic behind
+the OpenAI SDK interface. Because stimulir's gateway speaks the OpenAI
+request/response shape verbatim (`messages`, `model`, `stream` fields, same
+response envelope), **the OpenAI SDK client object itself does not change**
+— only its two construction arguments do.
 
 Before:
 
@@ -133,15 +197,25 @@ already centralized. If it's constructed ad hoc at each call site (no
 central factory), that's itself worth flagging back to the user as a
 pre-existing code-smell, separate from the migration.
 
-### 3. For `anthropic-sdk-needs-conversion` hits: no direct compatibility
+### 4. For `anthropic-sdk-needs-conversion` hits: no direct compatibility
 
 Stimulir's gateway is OpenAI-shaped, not Anthropic-shaped — there is no
-`base_url` swap that makes the Anthropic SDK "just work" the way step 2
+`base_url` swap that makes the Anthropic SDK "just work" the way step 3
 works for OpenAI. Two real conversion paths, pick per call site:
 
-**Path A — rewrite the call site to the OpenAI request shape**, keeping the
+**Path A (preferred) — convert to the Stimulir SDK** per step 2.
+`client.agent(prompt=..., model=..., tags=[...])` for one-shots, or
+`client.request("POST", "/api/v1/inference/chat/completions", json_body=...)`
+with a full `messages` array for multi-turn — Anthropic's separate top-level
+`system` param simply becomes the leading `{"role": "system", ...}` message.
+This sidesteps hand-converting the request/response envelope onto a second
+vendor SDK, and lands the adopter on the client that also drives prompts,
+data assets, and evals later. Prefer this whenever the call site doesn't
+need to remain OpenAI-SDK-shaped for provider-agnostic fallback reasons.
+
+**Path B — rewrite the call site to the OpenAI request shape**, keeping the
 `openai` SDK (add it as a new dependency if the adopter doesn't already have
-it) pointed at stimulir per step 2. Concretely:
+it) pointed at stimulir per step 3. Concretely:
 
 - `anthropic.Anthropic(api_key=...)` → `openai.OpenAI(api_key=<hyb_*>,
   base_url="https://api.stimulir.com/api/v1/inference")`
@@ -158,59 +232,21 @@ it) pointed at stimulir per step 2. Concretely:
   becomes OpenAI's `stream=True` + iterate chunks, `delta.content` per
   chunk instead of Anthropic's `event.delta.text`.
 
-**Path B — use stimulir's native Python SDK instead of hand-rolling the
-OpenAI shape** (see step 4 below) — `client.agent(prompt=..., role="user",
-model=..., tags=[...])` sidesteps needing to hand-convert the request/response
-envelope at all, at the cost of adopting a stimulir-specific call signature
-instead of an OpenAI-compatible one. Prefer this path when the call site
-doesn't need to remain provider-agnostic (i.e. the adopter isn't trying to
-keep OpenAI as a fallback provider) and when tool-use/multi-turn complexity
-in the existing Anthropic call would make a faithful message-shape
-conversion error-prone.
-
 Neither path is a mechanical find/replace — read the full call site
 (system prompts, tool definitions, stop sequences, max_tokens semantics
 differ subtly between the two APIs) before converting it.
 
-### 4. Stimulir's native Python SDK (alternative to the OpenAI-compatible path)
-
-```bash
-pip install stimulir
-# or
-uv add stimulir
-```
-
-```python
-from stimulir import StimulirClient
-
-client = StimulirClient(
-    api_base=None,       # defaults to STIMULIR_API_BASE / https://api.stimulir.com
-    api_key=None,         # defaults to STIMULIR_API_KEY env var
-    project_id=None,      # defaults to STIMULIR_PROJECT_ID env var
-)
-
-result = client.agent(
-    prompt="Summarize this ticket.",
-    role="user",
-    model="gpt-4o",
-    tags=["support-triage"],
-)
-```
-
-This is the right choice when the adopter's code isn't structured around an
-OpenAI-shaped client at all (e.g. converting from Anthropic per step 3's
-Path B), or when the adopter wants stimulir-specific features (`tags` for
-observability/routing, `project_id` scoping) that the raw OpenAI-compatible
-endpoint doesn't expose as first-class request fields. It is not a strict
-upgrade over step 2's `base_url` swap — for an adopter that already has
-`openai`-SDK-shaped code working, step 2 is strictly less code to change.
-
 ### 5. Raw HTTP call sites (`raw-http` hits)
 
-Same two options as an SDK call site, applied to the request builder
+Same preference order as the SDK call sites, applied to the request builder
 directly:
 
-- Point the existing `fetch`/`requests`/`httpx` call at
+- **Python call sites: replace the hand-rolled request with the Stimulir
+  SDK** (step 2) — `client.request("POST",
+  "/api/v1/inference/chat/completions", json_body=...)` keeps the exact same
+  OpenAI-compatible body the raw call was already building, and deletes the
+  bespoke auth/base-URL/error plumbing around it.
+- Non-Python call sites: point the existing `fetch`/`axios`/`curl` call at
   `https://api.stimulir.com/api/v1/inference/chat/completions`, keep the
   OpenAI-compatible JSON body shape (`{"model", "messages", "stream", ...}`),
   swap the `Authorization: Bearer sk-...` header for `Authorization: Bearer
@@ -218,7 +254,7 @@ directly:
   adopter is scoping to a specific stimulir project.
 - If the existing raw call was already building an Anthropic-shaped body
   (`/v1/messages`, `max_tokens` at top level, content-block responses),
-  it needs the same request/response conversion as step 3's Path A before
+  it needs the same request/response conversion as step 4's Path B before
   it can point at stimulir's endpoint — the body shape has to change, not
   just the URL and auth header.
 
@@ -240,13 +276,23 @@ perpetuating it for the new key.
 
 | Path | Shape | Auth |
 |---|---|---|
+| **Stimulir Python SDK (preferred)** | `pip install stimulir` / `uv add stimulir`; `StimulirClient()`; `client.agent(prompt=..., model=..., tags=[...])` for one-shots, `client.request("POST", "/api/v1/inference/chat/completions", json_body={model, messages:[...]})` for system-prompt + multi-turn history | Env: `STIMULIR_API_KEY`, `STIMULIR_API_BASE`, `STIMULIR_PROJECT_ID` (key carries workspace scope) |
+| OpenAI SDK, redirected (fallback) | Same `openai.OpenAI(...)` / `new OpenAI(...)` client shape, only `base_url` + `api_key` change — for non-Python or must-stay-OpenAI-shaped code | `api_key` = `hyb_*` |
 | Gateway REST endpoint | `POST https://api.stimulir.com/api/v1/inference/chat/completions` — OpenAI-compatible `messages`/`model`/`stream` request and response | `Authorization: Bearer hyb_*` + optional `X-Business-Profile-Id` / `X-Project-Id` |
-| OpenAI SDK, redirected | Same `openai.OpenAI(...)` / `new OpenAI(...)` client shape, only `base_url` + `api_key` change | `api_key` = `hyb_*` |
-| Stimulir Python SDK | `pip install stimulir` / `uv add stimulir`; `StimulirClient(api_base=None, api_key=None, project_id=None)`; `client.agent(prompt=..., role='user', model=..., tags=[...])` | Env: `STIMULIR_API_KEY`, `STIMULIR_API_BASE`, `STIMULIR_PROJECT_ID` |
-| Anthropic SDK call sites | **No direct compatibility.** Convert to OpenAI request shape (step 3, Path A) or to `client.agent()` (step 3, Path B) | n/a |
+| Anthropic SDK call sites | **No direct compatibility.** Convert to the Stimulir SDK (step 4, Path A) or to the OpenAI request shape (step 4, Path B) | n/a |
 
 ## Anti-patterns (do NOT do)
 
+- **Defaulting Python call sites to the redirected OpenAI SDK when the
+  Stimulir SDK fits.** The base_url swap is the fallback for non-Python or
+  deliberately provider-agnostic code, not the default — a Python adopter
+  landed on the OpenAI SDK never reaches `tags`, project scoping, prompts,
+  data assets, or eval runs without a second migration later.
+- **Using `client.agent()` for multi-turn conversations.** It is a one-shot
+  helper (single prompt + role). System prompts and conversation history go
+  through `client.request(...)` with a full OpenAI-shaped `messages` array —
+  do not build a fake transcript by concatenating turns into one prompt
+  string.
 - **Blind-editing source files based on `scan_codebase.py` output alone.**
   A regex hit tells you *where* to look, not *how* to safely change it. Read
   the full call site — error handling, retries, streaming, shared client

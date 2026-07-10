@@ -85,11 +85,11 @@ the *adopter's own* application: their `.env` file (untracked,
 secrets store — wherever their old `OPENAI_API_KEY` / `ANTHROPIC_API_KEY`
 already lived. See SKILL.md step 6 for the full rule.
 
-## 4. If migrating to the native Python SDK (optional path)
+## 4. Installing the Stimulir SDK in the adopter's repo (the default path)
 
-Only needed if the agent chooses the `client.agent()` path (SKILL.md step
-4) instead of the OpenAI-compatible `base_url` swap. This is installed in
-the **adopter's** repo, not this skill's:
+SKILL.md step 2 lands Python call sites on the Stimulir SDK — so for any
+Python adopter this install happens as part of the migration. It goes in the
+**adopter's** repo, not this skill's:
 
 ```bash
 # inside the adopter's repo, not this skill's directory
@@ -97,6 +97,9 @@ pip install stimulir
 # or
 uv add stimulir
 ```
+
+Skip this only when every call site takes the fallback path (non-Python
+codebase, or code that must stay OpenAI-SDK-shaped — SKILL.md step 3).
 
 ## 5. Notes
 
