@@ -1,14 +1,14 @@
 # Install — voice-modalities
 
-This is one of the few non-stdlib skills in the collection: the realtime
-helper uses the Stimulir SDK's websocket extra and the two REST helpers use
-httpx (the stimulir CLI has no voice commands to shell out to). ~5 minutes.
+This is one of the few non-stdlib skills in the collection: the helper
+uses the Stimulir SDK's websocket extra (the stimulir CLI has no voice
+commands to shell out to). ~5 minutes.
 
 ## 0. Prereqs
 
 ```bash
 python3 --version    # 3.10+
-uv sync              # installs httpx + stimulir[realtime] from pyproject.toml
+uv sync              # installs stimulir[realtime] from pyproject.toml
 ```
 
 ## 1. Skill install
@@ -58,8 +58,8 @@ force text-only modalities on a native-audio model — see SKILL.md).
 
 ## 4. Notes
 
-- The STT/TTS REST lanes are temporarily unavailable platform-side (see
-  SKILL.md, including working realtime-as-TTS) — the helpers' request
-  shapes are correct and surface the platform errors verbatim.
-- No helper persists audio bytes anywhere; TTS output goes only to the
-  `--out` path you name.
+- Batch audio (stored files, bulk synthesis) is the chat lane's job via
+  audio input parts — not served yet; see SKILL.md. The gateway's legacy
+  audio REST endpoints are not the stimulir path.
+- No helper persists audio bytes anywhere; spoken output goes only to the
+  `--out-wav` path you name.

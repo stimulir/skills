@@ -12,10 +12,9 @@ schema, and the auth handshake. This helper adds only bounding and
 reporting; which provider/model to use is the agent's judgment (SKILL.md).
 
 Audio bytes are counted and never printed or traced; pass --out-wav to
-write the spoken response to a WAV file you name — which makes this helper
-double as working text-to-speech (text in via --say, speech out) while the
-dedicated /audio/speech REST lane is blocked upstream. For verbatim TTS use
---instructions to pin the model to speaking the text exactly.
+write the spoken response to a WAV file you name — text-to-speech through
+the same lane. For verbatim TTS use --instructions to pin the model to
+speaking the text exactly.
 """
 import argparse
 import asyncio
