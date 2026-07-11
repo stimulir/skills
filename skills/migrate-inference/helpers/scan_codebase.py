@@ -94,11 +94,49 @@ PATTERNS = [
     ("anthropic-sdk-needs-conversion", "client.messages.create",
      re.compile(r"\.messages\.create\s*\(")),
 
+    # --- google-gemini-needs-conversion --------------------------------------
+    # Two SDK generations plus Vertex. Like Anthropic, none of these speak the
+    # OpenAI request shape, so every hit needs conversion (to the OpenAI shape
+    # or to the Stimulir SDK) — a base_url swap alone won't work. Covers the
+    # legacy google-generativeai (`import google.generativeai`), the current
+    # google-genai (`from google import genai` / `genai.Client(`), and the
+    # Vertex AI path (`vertexai`, `aiplatform`, `GenerativeModel(`).
+    ("google-gemini-needs-conversion", "import google.generativeai",
+     re.compile(r"^\s*import\s+google\.generativeai\b")),
+    ("google-gemini-needs-conversion", "from google.generativeai import",
+     re.compile(r"^\s*from\s+google\.generativeai\b")),
+    ("google-gemini-needs-conversion", "from google import genai",
+     re.compile(r"^\s*from\s+google\s+import\s+genai\b")),
+    ("google-gemini-needs-conversion", "import google.genai",
+     re.compile(r"^\s*import\s+google\.genai\b")),
+    ("google-gemini-needs-conversion", "genai.Client(",
+     re.compile(r"\bgenai\.Client\s*\(")),
+    ("google-gemini-needs-conversion", "genai.GenerativeModel(",
+     re.compile(r"\bgenai\.GenerativeModel\s*\(")),
+    ("google-gemini-needs-conversion", "GenerativeModel(",
+     re.compile(r"(?<!\.)\bGenerativeModel\s*\(")),
+    ("google-gemini-needs-conversion", "generate_content(",
+     re.compile(r"\.generate_content\s*\(")),
+    ("google-gemini-needs-conversion", "import vertexai",
+     re.compile(r"^\s*import\s+vertexai\b")),
+    ("google-gemini-needs-conversion", "from vertexai import",
+     re.compile(r"^\s*from\s+vertexai\b")),
+    ("google-gemini-needs-conversion", "aiplatform (Vertex)",
+     re.compile(r"\bgoogle\.cloud\.aiplatform\b|\baiplatform\.init\s*\(")),
+    ("google-gemini-needs-conversion", "require('@google/generative-ai')",
+     re.compile(r"require\(\s*['\"]@google/(generative-ai|genai)['\"]\s*\)")),
+    ("google-gemini-needs-conversion", "import ... from '@google/genai'",
+     re.compile(r"import\s+.*\bfrom\s+['\"]@google/(generative-ai|genai)['\"]")),
+
     # --- raw-http (host string match, provider recorded in snippet) --------
     ("raw-http", "raw HTTP call to api.openai.com",
      re.compile(r"[\"']https?://api\.openai\.com[^\"']*[\"']")),
     ("raw-http", "raw HTTP call to api.anthropic.com",
      re.compile(r"[\"']https?://api\.anthropic\.com[^\"']*[\"']")),
+    ("raw-http", "raw HTTP call to generativelanguage.googleapis.com",
+     re.compile(r"[\"']https?://generativelanguage\.googleapis\.com[^\"']*[\"']")),
+    ("raw-http", "raw HTTP call to *-aiplatform.googleapis.com (Vertex)",
+     re.compile(r"[\"']https?://[a-z0-9.-]*aiplatform\.googleapis\.com[^\"']*[\"']")),
 ]
 
 

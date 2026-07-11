@@ -70,9 +70,14 @@ Walks the target directory (skipping `node_modules`, `.git`, `venv`,
 - `import anthropic`, `from anthropic import ...`, `Anthropic(` /
   `AnthropicVertex(` / `AnthropicBedrock(` constructor calls,
   `client.messages.create(...)` — category `anthropic-sdk-needs-conversion`
+- `import google.generativeai` (legacy), `from google import genai` /
+  `genai.Client(` (current), `GenerativeModel(` / `.generate_content(`,
+  `import vertexai` / `aiplatform` (Vertex) — category
+  `google-gemini-needs-conversion`
 - Raw `fetch`/`requests`/`httpx`/`axios`/`curl`-style string literals whose
-  URL contains `api.openai.com` or `api.anthropic.com` — category
-  `raw-http`
+  URL contains `api.openai.com`, `api.anthropic.com`,
+  `generativelanguage.googleapis.com`, or `*-aiplatform.googleapis.com` —
+  category `raw-http`
 
 Output is one JSON report: `{target, total_hits, by_category, hits: [...]}`,
 where each hit is `{file, line, pattern, category, snippet}`. This is a
@@ -236,6 +241,45 @@ Neither path is a mechanical find/replace — read the full call site
 (system prompts, tool definitions, stop sequences, max_tokens semantics
 differ subtly between the two APIs) before converting it.
 
+### 4b. For `google-gemini-needs-conversion` hits: no direct compatibility
+
+Gemini's SDKs (`google-generativeai`, `google-genai`) and Vertex
+(`vertexai` / `aiplatform`) speak neither the OpenAI nor the Anthropic
+request shape, so — like Anthropic — a `base_url` swap won't work. Same two
+paths, same preference:
+
+**Path A (preferred) — convert to the Stimulir SDK** per step 2.
+`client.agent(prompt=..., model="gemini-2.5-flash", ...)` for one-shots, or
+`client.request("POST", "/api/v1/inference/chat/completions", json_body=...)`
+with a full `messages` array for multi-turn. Concretely for the current
+`google-genai` SDK:
+
+- `genai.Client(api_key=...)` → `StimulirClient()` (key from
+  `STIMULIR_API_KEY`).
+- `client.models.generate_content(model="gemini-2.5-flash",
+  contents=...)` → `client.request(..., json_body={"model":
+  "gemini-2.5-flash", "messages": [...]})`. Gemini's `contents` list (parts
+  with `role: "user"|"model"`) becomes the OpenAI `messages` array —
+  Gemini's `"model"` role maps to `"assistant"`; a top-level
+  `system_instruction` becomes a leading `{"role": "system", ...}` message.
+- Gemini's `response.text` (or `response.candidates[0].content.parts[0].text`)
+  becomes `resp["choices"][0]["message"]["content"]`.
+- Streaming: `generate_content_stream(...)` / `stream=True` chunks'
+  `chunk.text` become OpenAI `delta.content`.
+- Multimodal parts (inline image/audio) map to OpenAI content-part lists
+  (`{"type": "image_url", ...}`) — see the vision/audio parts the gateway
+  already accepts.
+
+**Path B — OpenAI request shape** per step 3, keeping the `openai` SDK
+pointed at Stimulir. Note Gemini and Vertex go through the *same* Stimulir
+model ids (`gemini-2.5-flash`, etc.) regardless of which Google SDK the
+adopter started from; the provider is resolved by the workspace's BYOK
+credential (see `byok-register`), not by the client library.
+
+Neither path is a mechanical find/replace — Gemini's `safety_settings`,
+`generation_config` (temperature/top_k/max_output_tokens), and tool/function
+declarations differ from the OpenAI shape; read the full call site first.
+
 ### 5. Raw HTTP call sites (`raw-http` hits)
 
 Same preference order as the SDK call sites, applied to the request builder
@@ -280,6 +324,7 @@ perpetuating it for the new key.
 | OpenAI SDK, redirected (fallback) | Same `openai.OpenAI(...)` / `new OpenAI(...)` client shape, only `base_url` + `api_key` change — for non-Python or must-stay-OpenAI-shaped code | `api_key` = `hyb_*` |
 | Gateway REST endpoint | `POST https://api.stimulir.com/api/v1/inference/chat/completions` — OpenAI-compatible `messages`/`model`/`stream` request and response | `Authorization: Bearer hyb_*` + optional `X-Business-Profile-Id` / `X-Project-Id` |
 | Anthropic SDK call sites | **No direct compatibility.** Convert to the Stimulir SDK (step 4, Path A) or to the OpenAI request shape (step 4, Path B) | n/a |
+| Gemini / Vertex SDK call sites | **No direct compatibility.** Convert to the Stimulir SDK (step 4b, Path A) or to the OpenAI request shape (step 4b, Path B); same Stimulir model ids either way | n/a |
 
 ## Anti-patterns (do NOT do)
 
@@ -325,3 +370,13 @@ perpetuating it for the new key.
   catches raw-HTTP call sites and secondary files (test doubles, scripts,
   notebooks) that a quick mental scan misses, and the JSON report is cheap
   to produce.
+- **Reading a zero-hit scan as "nothing to migrate."** The scanner matches
+  known provider surfaces (OpenAI, Anthropic, Gemini/Vertex, and their raw
+  hosts). A codebase can still have a real inference layer the scan can't
+  see: a house-rolled LLM wrapper, an unlisted provider (Mistral, Cohere,
+  Together, Bedrock via boto3), a proxy/gateway indirection, or calls behind
+  a local helper module. When `total_hits` is 0, do NOT conclude the repo is
+  clean — confirm it against the repo's own architecture (grep for the
+  model-id strings it uses, its LLM config, its `requirements`/`package.json`
+  provider deps) before reporting "nothing to migrate." The scan is a
+  fast first pass, not proof of absence.
