@@ -11,8 +11,11 @@ WebSocket protocol: the SDK owns setup()'s once-only guard, the event
 schema, and the auth handshake. This helper adds only bounding and
 reporting; which provider/model to use is the agent's judgment (SKILL.md).
 
-Audio bytes are counted, never persisted or printed — the gateway stores
-transcripts only, and this helper follows the same rule.
+Audio bytes are counted and never printed or traced; pass --out-wav to
+write the spoken response to a WAV file you name — which makes this helper
+double as working text-to-speech (text in via --say, speech out) while the
+dedicated /audio/speech REST lane is blocked upstream. For verbatim TTS use
+--instructions to pin the model to speaking the text exactly.
 """
 import argparse
 import asyncio
@@ -34,6 +37,7 @@ def read_wav_pcm16(path: str, expected_rate: int) -> bytes:
 async def run(args: argparse.Namespace) -> dict:
     from stimulir.realtime import (
         INPUT_AUDIO_SAMPLE_RATE,
+        OUTPUT_AUDIO_SAMPLE_RATE,
         AudioDelta,
         InputTranscript,
         RealtimeClient,
@@ -63,6 +67,7 @@ async def run(args: argparse.Namespace) -> dict:
             await conn.create_response()
 
         text_parts: list[str] = []
+        audio_parts: list[bytes] = []
 
         async def consume() -> None:
             async for event in conn.events():
@@ -72,6 +77,8 @@ async def run(args: argparse.Namespace) -> dict:
                     text_parts.append(event.delta)
                 elif isinstance(event, AudioDelta):
                     summary["audio_bytes"] += len(event.pcm16)
+                    if args.out_wav:
+                        audio_parts.append(event.pcm16)
                 elif isinstance(event, InputTranscript):
                     summary["input_transcripts"].append(event.text)
                 elif isinstance(event, ResponseDone):
@@ -82,6 +89,13 @@ async def run(args: argparse.Namespace) -> dict:
         except asyncio.TimeoutError:
             summary["close_reason"] = f"timeout after {args.timeout}s"
         summary["text"] = "".join(text_parts)
+        if args.out_wav and audio_parts:
+            with wave.open(args.out_wav, "wb") as out:
+                out.setnchannels(1)
+                out.setsampwidth(2)
+                out.setframerate(OUTPUT_AUDIO_SAMPLE_RATE)
+                out.writeframes(b"".join(audio_parts))
+            summary["out_wav"] = args.out_wav
     return summary
 
 
@@ -94,6 +108,7 @@ def main() -> None:
     parser.add_argument("--instructions", default="You are a concise voice assistant.")
     parser.add_argument("--timeout", type=float, default=60.0, help="Hard bound on the event loop (seconds).")
     parser.add_argument("--url", default=None, help="Full realtime WS URL override (query params appended).")
+    parser.add_argument("--out-wav", default=None, help="Write the spoken response to this WAV path (realtime-as-TTS).")
     args = parser.parse_args()
     try:
         summary = asyncio.run(run(args))

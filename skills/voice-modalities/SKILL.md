@@ -18,7 +18,7 @@ currently broken, so an agent doesn't burn a session rediscovering it.
 |---|---|---|---|
 | Realtime STS | `WS /api/v1/inference/realtime` | `stimulir.realtime.RealtimeClient` | **Working** — live session returns spoken audio |
 | STT | `POST /api/v1/inference/audio/transcriptions` | none (httpx) | **Gated** — HybrIE restricts transcription to local execution mode this release, and the gateway does not set/forward `x-hybrie-execution-mode`, so this lane 400s end-to-end |
-| TTS | `POST /api/v1/inference/audio/speech` | none (httpx) | **Broken upstream** — HybrIE's Runware adapter sends `taskUUID: "speech_<hex>"`; Runware requires a bare UUIDv4, so every request 400s (`hybrie-server/src/api/cloud.rs`, taskUUID construction) |
+| TTS | `POST /api/v1/inference/audio/speech` | none (httpx) | **REST lane broken upstream — use realtime-as-TTS below, verified working** — HybrIE's Runware adapter sends `taskUUID: "speech_<hex>"`; Runware requires a bare UUIDv4, so every request 400s (`hybrie-server/src/api/cloud.rs`, taskUUID construction) |
 
 All three authenticate with the workspace `hyb_*` key (`Authorization:
 Bearer`). The realtime WS also accepts `?api_key=` as a query param for
@@ -128,6 +128,27 @@ Returns binary audio verbatim (default `audio/mpeg`). Input text is
 trace-captured; audio bytes never stored. Metering: `modality: "tts"`,
 `characters` in metadata, cost 0 unrated. Currently 400s on the upstream
 Runware taskUUID bug — the helper prints the backend error verbatim.
+
+**Working today: realtime-as-TTS.** The realtime lane accepts text in and
+returns spoken audio out, which is functionally TTS — verified: verbatim
+speech, playable 24 kHz WAV. Pin the model to verbatim delivery through the
+instructions and write the response audio with `--out-wav`:
+
+```bash
+python helpers/realtime_smoke.py --provider vertex \
+  --instructions "You are a text-to-speech engine. Speak the user's text exactly as written, nothing else." \
+  --say "Text you want spoken." \
+  --out-wav speech.wav
+```
+
+Trade-offs vs the REST lane (when it is fixed): an LLM speaking under
+instruction rather than a deterministic TTS engine (verbatim in practice,
+probabilistic in principle); billed as `voice_realtime` minutes rather than
+characters; a WS session per utterance; PCM16/WAV out rather than mp3; and
+the vertex/gemini/openai providers need BYOK where the REST lane is
+managed. For batch or high-volume synthesis prefer the REST lane once
+unblocked; for interactive apps that already hold a realtime session, this
+is not a workaround at all — it is simply the lane's normal output.
 
 ## Anti-patterns (do NOT do)
 
