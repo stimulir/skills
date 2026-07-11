@@ -1,6 +1,6 @@
 ---
 name: voice-modalities
-description: Wire an application onto stimulir's voice lane — one realtime WebSocket that covers speech-to-speech, live transcription, and text-to-speech in a single session. Use when a user wants to add voice to an app on stimulir, run a live voice session, transcribe speech, synthesize speech, or figure out which model/endpoint serves audio.
+description: Generate spoken audio from text, transcribe speech, or run a live voice session on stimulir — one realtime lane covers all three, usable as a single command with just a STIMULIR_API_KEY (no integration work required). Also the integration guide for wiring an application onto the voice lane. Use when a user wants audio generated from text (a brief, summary, or message read aloud), speech transcribed, a live voice session, or to add voice to an app on stimulir.
 ---
 
 # Voice Modalities
@@ -10,6 +10,23 @@ native: the realtime WebSocket session speaks, listens, and transcribes —
 the same way a vision-language model subsumes a separate OCR-then-LLM
 pipeline. There are no separate STT/TTS engines to integrate. Everything
 below was verified against the live gateway.
+
+## Just want audio from text? Start here
+
+No integration work needed — with `STIMULIR_API_KEY` set (or a machine
+that ran `connect`), this one command turns text into a spoken WAV:
+
+```bash
+uv sync   # once, installs stimulir[realtime]
+python helpers/realtime_smoke.py --provider vertex \
+  --instructions "You are a text-to-speech engine. Speak the user's text exactly as written, nothing else." \
+  --say "$(cat brief.txt)" --out-wav brief.wav
+```
+
+Pipe any text in — a chief-of-staff brief, a summary, a notification —
+and hand the WAV to whatever delivers it (Slack upload, email, player).
+Everything after this section is for engineers wiring voice into an
+application; you don't need it for one-shot audio generation.
 
 ## The lane
 
