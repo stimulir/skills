@@ -58,8 +58,8 @@ force text-only modalities on a native-audio model — see SKILL.md).
 
 ## 4. Notes
 
-- STT/TTS current status (execution-mode gate; upstream Runware bug) is
-  documented in SKILL.md — the helpers' request shapes are correct and
-  surface those gateway errors verbatim rather than masking them.
+- The STT/TTS REST lanes are temporarily unavailable platform-side (see
+  SKILL.md, including working realtime-as-TTS) — the helpers' request
+  shapes are correct and surface the platform errors verbatim.
 - No helper persists audio bytes anywhere; TTS output goes only to the
   `--out` path you name.

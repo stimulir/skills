@@ -9,11 +9,10 @@ trace-captured server-side; the audio bytes are never stored.
 Direct httpx (privacy-layer pattern) because the stimulir CLI has no voice
 commands to shell out to. NOTE the path has no /v1 OpenAI-compat alias.
 
-Known upstream state at authoring time: HybrIE restricts transcription to
-local execution mode for this release and the gateway does not set/forward
-x-hybrie-execution-mode, so this lane currently returns a 400 explaining
-exactly that. The request shape here is correct and stable; the helper
-surfaces the gateway error verbatim on stderr so the state is obvious.
+Known state at authoring time: this REST lane is temporarily unavailable
+platform-side and returns a clear 400 for every request this release. The
+request shape here is correct and stable; the helper surfaces the
+platform's error verbatim on stderr so the state is obvious.
 """
 import argparse
 import json

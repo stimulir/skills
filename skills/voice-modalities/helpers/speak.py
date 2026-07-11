@@ -11,10 +11,11 @@ Direct httpx (privacy-layer pattern) because the stimulir CLI has no voice
 commands to shell out to. NOTE the path has no /v1 OpenAI-compat alias —
 do not point an OpenAI SDK client at it.
 
-Known upstream state at authoring time: HybrIE's Runware TTS adapter sends
-a non-UUIDv4 taskUUID and every request 400s. This helper's request shape
-is correct; it surfaces that backend error verbatim on stderr so the state
-is obvious rather than mysterious.
+Known state at authoring time: this REST lane is temporarily unavailable
+platform-side and returns a 400 for every request. The request shape here
+is correct and stable; the helper surfaces the platform's error verbatim
+on stderr. For working text-to-speech today use realtime_smoke.py
+--out-wav (see SKILL.md).
 """
 import argparse
 import json

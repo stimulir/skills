@@ -9,24 +9,24 @@ Three separate lanes, three separate maturity levels. This skill exists
 because the lanes cannot be discovered from any single place: realtime is
 documented but STT/TTS exist only at the raw gateway, the Python SDK covers
 realtime only (behind an extra), and the CLI has no voice commands at all.
-Everything below was verified against the live gateway — including what is
-currently broken, so an agent doesn't burn a session rediscovering it.
+Everything below was verified against the live gateway — including the current
+status of each lane, so an agent doesn't burn a session rediscovering it.
 
 ## The three lanes
 
 | Lane | Endpoint | SDK | Status (verified) |
 |---|---|---|---|
-| Realtime STS | `WS /api/v1/inference/realtime` | `stimulir.realtime.RealtimeClient` | **Working** — live session returns spoken audio |
-| STT | `POST /api/v1/inference/audio/transcriptions` | none (httpx) | **Gated** — HybrIE restricts transcription to local execution mode this release, and the gateway does not set/forward `x-hybrie-execution-mode`, so this lane 400s end-to-end |
-| TTS | `POST /api/v1/inference/audio/speech` | none (httpx) | **REST lane broken upstream — use realtime-as-TTS below, verified working** — HybrIE's Runware adapter sends `taskUUID: "speech_<hex>"`; Runware requires a bare UUIDv4, so every request 400s (`hybrie-server/src/api/cloud.rs`, taskUUID construction) |
+| Realtime STS + TTS | `WS /api/v1/inference/realtime` | `stimulir.realtime.RealtimeClient` | **Working** — live session returns spoken audio; text-in gives verbatim speech-out |
+| STT | `POST /api/v1/inference/audio/transcriptions` | none (httpx) | **Temporarily unavailable** — the platform returns a clear 400 for every request this release; the request shape below is stable |
+| TTS | `POST /api/v1/inference/audio/speech` | none (httpx) | **REST lane temporarily unavailable — use realtime-as-TTS below, verified working** |
 
 All three authenticate with the workspace `hyb_*` key (`Authorization:
 Bearer`). The realtime WS also accepts `?api_key=` as a query param for
 clients that cannot set headers.
 
-Run the lanes in this order when integrating: realtime first (it works and
-proves the key/workspace), then keep the STT/TTS helpers wired so they light
-up the moment the two upstream issues are fixed — the request shapes below
+Run the lanes in this order when integrating: realtime first (it works,
+proves the key/workspace, and covers speech-out via realtime-as-TTS), then keep the STT/TTS helpers wired so they light
+up when the platform enables those lanes — the request shapes below
 are correct and stable; only the upstream serving is pending.
 
 ## Placement rationale
@@ -114,8 +114,8 @@ python helpers/transcribe.py recording.wav --model whisper-1 [--language en]
 OpenAI-shape multipart: `file` + `model` (+ optional `language`, `prompt`,
 `response_format`, `temperature`). Transcript text is trace-captured;
 **audio bytes are never stored**. Metering: `modality: "stt"`, cost 0 with
-`"pricing": "unrated"`. Currently returns the execution-mode 400 described
-above — the helper surfaces that error verbatim so the state is obvious.
+`"pricing": "unrated"`. Currently unavailable — the helper surfaces the
+platform's 400 verbatim so the state is obvious rather than mysterious.
 
 ## Lane 3 — TTS synthesis (request shape correct, upstream broken)
 
@@ -126,8 +126,9 @@ python helpers/speak.py "Text to speak" --model tts-1 --voice alloy --out speech
 OpenAI-shape JSON: `model` + `input` (+ passthrough fields like `voice`).
 Returns binary audio verbatim (default `audio/mpeg`). Input text is
 trace-captured; audio bytes never stored. Metering: `modality: "tts"`,
-`characters` in metadata, cost 0 unrated. Currently 400s on the upstream
-Runware taskUUID bug — the helper prints the backend error verbatim.
+`characters` in metadata, cost 0 unrated. Currently unavailable — the helper prints the
+platform's error verbatim. When it ships this is the batch/high-volume
+lane: managed (no BYOK), character-metered, mp3 out.
 
 **Working today: realtime-as-TTS.** The realtime lane accepts text in and
 returns spoken audio out, which is functionally TTS — verified: verbatim
