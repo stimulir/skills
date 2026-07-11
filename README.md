@@ -19,6 +19,7 @@ onto the gateway, then turn the feedback loop on.
 | 0 — Connect | [`connect`](./skills/connect/) | Install the CLI, authenticate, create a workspace-scoped key, send one real inference call, confirm the cost shows up. Minutes, not hours. |
 | 1 — Migrate | [`migrate-inference`](./skills/migrate-inference/) | Scan your own codebase for direct OpenAI/Anthropic calls and rewire them onto Stimulir — the Stimulir Python SDK (`StimulirClient`) is the preferred landing point; the OpenAI-compatible `base_url` swap is the fallback for non-Python code. |
 | 1 — Migrate (alt) | [`byok-register`](./skills/byok-register/) | Keep your existing provider contract — register your own key with Stimulir instead of switching to managed inference. |
+| 1 — Migrate (voice) | [`voice-modalities`](./skills/voice-modalities/) | Wire voice onto the gateway: live speech-to-speech over the realtime WebSocket (SDK), plus the STT/TTS REST lanes with verified request shapes and honest per-lane status. |
 | 2 — Flywheel | [`capture-traces`](./skills/capture-traces/) | Turn live traffic into curated data assets (Raw → Cleaning → Clean View → Snapshot). This is the mechanism behind "gets sharper as it runs." |
 | 2 — Flywheel | [`privacy-layer`](./skills/privacy-layer/) | Redact/mask PII before it's captured or forwarded — sequence this *before* `capture-traces`, since captured traces become future training data. |
 | 3 — Close the loop | [`prompt-versioning`](./skills/prompt-versioning/) | Version and label prompts instead of hardcoding strings; promote through environments deliberately. |
@@ -47,11 +48,13 @@ a human confirming every step.
 npx skills add stimulir/skills
 ```
 
-Six of the eight skills are standard-library only — their helpers shell
+Six of the nine skills are standard-library only — their helpers shell
 out to the `stimulir` CLI rather than reimplementing REST auth, so there's
 no `uv sync` to run for `connect`, `migrate-inference`, `byok-register`,
-`capture-traces`, `prompt-versioning`, or `eval-run`. Only `privacy-layer`
-and `usage-audit` call the Stimulir API directly and need `httpx`:
+`capture-traces`, `prompt-versioning`, or `eval-run`. Three call the
+Stimulir API directly and need dependencies: `privacy-layer` and
+`usage-audit` (`httpx`), and `voice-modalities` (`httpx` +
+`stimulir[realtime]` — the CLI has no voice commands to shell out to):
 
 ```bash
 cd ~/.claude/skills/privacy-layer      # or ~/.codex/skills/privacy-layer
@@ -59,6 +62,9 @@ uv sync   # installs httpx
 
 cd ~/.claude/skills/usage-audit
 uv sync   # installs httpx
+
+cd ~/.claude/skills/voice-modalities
+uv sync   # installs httpx + stimulir[realtime]
 ```
 
 ### Local clone + symlink
@@ -76,7 +82,7 @@ uv sync   # installs httpx
 Then point your host at the skill directories you want:
 
 ```bash
-for s in connect migrate-inference byok-register capture-traces \
+for s in connect migrate-inference byok-register voice-modalities capture-traces \
          privacy-layer prompt-versioning eval-run usage-audit; do
   ln -s ~/Developer/stimulir-skills/skills/$s ~/.claude/skills/$s
 done
@@ -117,7 +123,8 @@ stimulir-skills/
     ├── privacy-layer/
     ├── prompt-versioning/
     ├── eval-run/
-    └── usage-audit/
+    ├── usage-audit/
+    └── voice-modalities/
         ├── SKILL.md
         ├── README.md
         ├── install.md
