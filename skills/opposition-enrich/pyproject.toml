@@ -1,0 +1,23 @@
+[project]
+name = "opposition-enrich"
+version = "0.1.0"
+description = "Competitor/opposition intelligence — discover a rival's web properties, research them in parallel, extract structured attributes, and compile a sourced brief. HTTP-only by default (sandbox-native); browser-use is an optional Chromium upgrade."
+requires-python = ">=3.10"
+dependencies = [
+    "httpx>=0.27",
+    "trafilatura>=1.8",
+]
+
+[project.optional-dependencies]
+# Optional Chromium path for JS-heavy pricing/product pages. Only installable
+# where a real browser exists (a MicroVM image with Chromium, or Playwright).
+browser = [
+    "browser-use>=0.1",
+    "playwright>=1.40",
+]
+
+[tool.uv]
+dev-dependencies = [
+    "pytest>=8.0",
+    "ruff>=0.5",
+]

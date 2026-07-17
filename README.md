@@ -29,6 +29,19 @@ onto the gateway, then turn the feedback loop on.
 Everything past Stage 0 assumes `connect` has already run — the CLI is
 installed, authenticated, and pointed at the right workspace.
 
+## Research skills (managed)
+
+Agent-capability skills, not onboarding stages — imported into a workspace and
+run in the sandbox. Each declares its own external keys via a `required_secrets`
+frontmatter field, so a managed run injects them from the workspace vault (the
+gateway `STIMULIR_API_KEY` still covers inference; these are the extra,
+skill-specific keys like Serper).
+
+| Skill | What it does | required_secrets |
+|---|---|---|
+| [`deep-research`](./skills/deep-research/) | Exhaustive web research — Serper discovery, parallel fetch/extract fan-out, cited report + CSV. HTTP-only by default; browser-use (Chromium) optional. | `SERPER_API_KEY` |
+| [`opposition-enrich`](./skills/opposition-enrich/) | Competitor/opposition intelligence — discover a rival's properties, research in parallel, extract structured attributes, compile a sourced brief (one competitor or a landscape). | `SERPER_API_KEY` |
+
 ## What's deliberately not here
 
 Real GPU training jobs (SFT/RL/D2L/projector runs), compute

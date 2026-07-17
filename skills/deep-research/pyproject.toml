@@ -1,0 +1,26 @@
+[project]
+name = "deep-research"
+version = "0.1.0"
+description = "Exhaustive web research: Serper discovery, parallel fetch/extract fan-out, cited-report synthesis. HTTP-only by default (sandbox-native); browser-use is an optional Chromium upgrade for JS-heavy pages."
+requires-python = ">=3.10"
+dependencies = [
+    "httpx>=0.27",
+    # Main-content extraction with no browser — turns raw HTML into clean text
+    # inside a bare code-runtime sandbox (no Chromium needed).
+    "trafilatura>=1.8",
+]
+
+[project.optional-dependencies]
+# The Chromium upgrade path. Only install where a real browser is available
+# (a Lambda MicroVM image with Chromium baked in, or a machine with Playwright).
+# NOT installable in a bare AgentCore code-interpreter sandbox.
+browser = [
+    "browser-use>=0.1",
+    "playwright>=1.40",
+]
+
+[tool.uv]
+dev-dependencies = [
+    "pytest>=8.0",
+    "ruff>=0.5",
+]
