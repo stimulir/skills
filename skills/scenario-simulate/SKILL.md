@@ -1,6 +1,6 @@
 ---
 name: scenario-simulate
-description: Simulate how a described population reacts to a change, and get back a distribution and a narrative — why they split, not just how much. Give it a context (who these people are) and a scenario (what happens to them); it materialises personas, runs their reactions in parallel through the gateway, and folds the result into segment-level counts plus a written explanation. Use for "what if" questions about a market, an electorate, a user base, or a workforce — campaign and pricing what-ifs, policy reaction, feature reception, message testing. Agent-driven, resumable one timestep at a time. Output is synthetic by construction and must never be presented as measurement.
+description: Simulate how a described population reacts to a change, and get back a distribution and a narrative: why they split, not just how much. Give it a context (who these people are) and a scenario (what happens to them); it materialises personas, runs their reactions in parallel through the gateway, and folds the result into segment-level counts plus a written explanation. Use for "what if" questions about a market, an electorate, a user base, or a workforce: campaign and pricing what-ifs, policy reaction, feature reception, message testing. Agent-driven, resumable one timestep at a time. Output is synthetic by construction and must never be presented as measurement.
 required_secrets: []
 ---
 
@@ -10,17 +10,17 @@ Ask what a population would do before it does it.
 
 The engine is domain-agnostic: a **described population** meets **a change**, and
 you get a distribution plus a narrative. Buyers meet a campaign, voters meet an
-event, users meet a feature, staff meet a policy — one skill, because the
+event, users meet a feature, staff meet a policy. One skill, because the
 capability was never the domain.
 
-You do the judgment — which segments matter, whether a result is plausible, when
+You do the judgment: which segments matter, whether a result is plausible, when
 to stop. The helpers materialise the population, fan the reactions out in
 parallel, and count deterministically.
 
 ## Secrets this skill needs
 
 None of its own. Inference runs on the workspace's gateway key
-(`STIMULIR_API_KEY`), which a managed run already injects — that's why
+(`STIMULIR_API_KEY`), which a managed run already injects. That is why
 `required_secrets` above is empty, unlike the Serper-backed research skills.
 Standalone, export `STIMULIR_API_KEY` yourself; `STIMULIR_API_BASE`,
 `STIMULIR_PROJECT_ID` and `STIMULIR_MODEL` are optional overrides.
@@ -34,7 +34,7 @@ export STIMULIR_API_KEY=hyb_...
 
 ## Workflow
 
-### 1. Describe the population — this is the part that decides everything
+### 1. Describe the population. This is the part that decides everything
 
 Write a context file. Segments are yours to choose; the quality of the whole run
 rests on them, which is why no helper invents them for you.
@@ -51,7 +51,7 @@ rests on them, which is why no helper invents them for you.
 }
 ```
 
-`basis` travels with every downstream artifact — it is how a reader knows what
+`basis` travels with every downstream artifact. It is how a reader knows what
 the personas were derived from. Shares need not sum to 1; segments without one
 split the remainder equally.
 
@@ -62,7 +62,7 @@ python3 helpers/population.py --context ctx.json --n 40 --seed 7 --out pop.json
 `--seed` makes the population reproducible, so two scenarios can be compared
 against the *same* people rather than two different draws.
 
-### 2. Step — one timestep per invocation
+### 2. Step, one timestep per invocation
 
 ```bash
 python3 helpers/step.py --state pop.json \
@@ -71,7 +71,7 @@ python3 helpers/step.py --state pop.json \
 ```
 
 Every persona reacts concurrently, one gateway call each, bounded by
-`--concurrency`. Each returns `ok` or `error` — one failed persona never sinks
+`--concurrency`. Each returns `ok` or `error`, so one failed persona never sinks
 the batch.
 
 Chain steps to let stances evolve; each persona's prior reaction is carried into
@@ -82,33 +82,33 @@ python3 helpers/step.py --state s1.json --scenario "opposition holds a rally in 
 ```
 
 **Why one step per call:** a managed run is synchronous with a 180-second cap, so
-a long simulation is a chain — state out, state back in. You also get
+a long simulation is a chain: state out, state back in. You also get
 resumability, inspectable intermediate states, and the ability to stop a run
 that is going wrong.
 
-**Budget it.** Measured on staging, 40 personas at `--concurrency 8` took 190s —
+**Budget it.** Measured on staging, 40 personas at `--concurrency 8` took 190s,
 over the cap. The default 12 fits the same population. Raise concurrency
 alongside `--n`, and time one step locally before running it managed.
 
-### 3. Judge — this is the part only you can do
+### 3. Judge. This is the part only you can do
 
 Read `s1.json` before aggregating. Are the reactions actually differentiated, or
 is every persona saying the same thing in different words? Does any segment
 respond in a way the context does not justify? A homogeneous result usually means
-the segments were too similar or the traits too thin — fix the context and re-run
+the segments were too similar or the traits too thin. Fix the context and re-run
 rather than aggregating noise.
 
 A lopsided split is not automatically wrong. In testing, "fuel subsidy removed"
-returned 35 of 38 opposed — which is plausible for that scenario, and the
+returned 35 of 38 opposed, which is plausible for that scenario, and the
 reasoning did vary by segment (traders on transport costs, students on
 transport-to-campus). But a one-sided result is also what a **leading scenario**
 produces. Ask which you have before continuing: reword the scenario neutrally and
 re-run; if the split holds, it was the population, not the prompt.
 
-Also check `failed` — personas that errored are excluded from every count, so a
+Also check `failed`: personas that errored are excluded from every count, so a
 run with many failures is a smaller sample than it looks.
 
-### 4. Aggregate — counts deterministically, narrates once
+### 4. Aggregate. Counts deterministically, narrates once
 
 ```bash
 python3 helpers/aggregate.py --state s2.json --out report.json

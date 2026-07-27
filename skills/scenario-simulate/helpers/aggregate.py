@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Fold a simulation state into a distribution plus a narrative.
 
-The distribution is computed deterministically here — counting is not a job for
+The distribution is computed deterministically here, because counting is not a job for
 a model. The narrative is one gateway call over the *aggregate*, not over raw
 reactions, so it summarises the population rather than echoing one persona.
 
