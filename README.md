@@ -41,6 +41,7 @@ skill-specific keys like Serper).
 |---|---|---|
 | [`deep-research`](./skills/deep-research/) | Exhaustive web research — Serper discovery, parallel fetch/extract fan-out, cited report + CSV. HTTP-only by default; browser-use (Chromium) optional. | `SERPER_API_KEY` |
 | [`opposition-enrich`](./skills/opposition-enrich/) | Competitor/opposition intelligence — discover a rival's properties, research in parallel, extract structured attributes, compile a sourced brief (one competitor or a landscape). | `SERPER_API_KEY` |
+| [`scenario-simulate`](./skills/scenario-simulate/) | What-if against a described population — materialise personas from a context, fan their reactions out through the gateway, return a segment-level distribution plus a narrative explaining the split. Market, electorate, users or workforce; resumable one timestep at a time. Output is synthetic by construction, never measurement. | *(none — inference only)* |
 
 ## What's deliberately not here
 
