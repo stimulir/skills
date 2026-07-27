@@ -32,17 +32,17 @@ installed, authenticated, and pointed at the right workspace.
 ## Managed skills
 
 Agent capabilities rather than onboarding stages. These are imported into a
-workspace and run in the sandbox. Inference is covered by the gateway key a
-managed run already provides. A skill that also needs an external key declares
-it in its own `required_secrets` frontmatter, where a managed run injects it
-from the workspace vault; see that skill's `install.md` for which.
+workspace and run in the sandbox. Where a skill needs an external key it
+declares one in its `required_secrets` frontmatter and a managed run injects it
+from the workspace vault. Where that list is empty the skill needs nothing
+beyond the gateway `STIMULIR_API_KEY` a managed run already provides.
 
-| Skill | What it does |
-|---|---|
-| [`web-scrape`](./skills/web-scrape/) | Plain text extraction from one URL, a list of URLs, or an index page whose links should be followed. Parallel fetch and extract, structured JSON out. No scoring and no research judgment; reach for `deep-research` when you want a cited report instead. |
-| [`deep-research`](./skills/deep-research/) | Exhaustive web research: source discovery, parallel fetch/extract fan-out, cited report plus CSV. HTTP-only by default; browser-use (Chromium) optional. |
-| [`opposition-enrich`](./skills/opposition-enrich/) | Competitor and opposition intelligence: discover a rival's properties, research them in parallel, extract structured attributes, compile a sourced brief for one competitor or a landscape. |
-| [`scenario-simulate`](./skills/scenario-simulate/) | What-if against a described population. Materialise personas from a context, fan their reactions out through the gateway, return a segment-level distribution plus a narrative explaining the split. Market, electorate, users or workforce; resumable one timestep at a time. Output is synthetic by construction and must never be presented as measurement. |
+| Skill | What it does | required_secrets |
+|---|---|---|
+| [`web-scrape`](./skills/web-scrape/) | Plain text extraction from one URL, a list of URLs, or an index page whose links should be followed. Parallel fetch and extract, structured JSON out. No scoring and no research judgment; reach for `deep-research` when you want a cited report instead. | *(none)* |
+| [`deep-research`](./skills/deep-research/) | Exhaustive web research: Serper discovery, parallel fetch/extract fan-out, cited report plus CSV. HTTP-only by default; browser-use (Chromium) optional. | `SERPER_API_KEY` |
+| [`opposition-enrich`](./skills/opposition-enrich/) | Competitor and opposition intelligence: discover a rival's properties, research them in parallel, extract structured attributes, compile a sourced brief for one competitor or a landscape. | `SERPER_API_KEY` |
+| [`scenario-simulate`](./skills/scenario-simulate/) | What-if against a described population. Materialise personas from a context, fan their reactions out through the gateway, return a segment-level distribution plus a narrative explaining the split. Market, electorate, users or workforce; resumable one timestep at a time. Output is synthetic by construction and must never be presented as measurement. | *(none)* |
 
 ## Install
 
