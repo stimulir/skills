@@ -44,17 +44,6 @@ beyond the gateway `STIMULIR_API_KEY` a managed run already provides.
 | [`opposition-enrich`](./skills/opposition-enrich/) | Competitor and opposition intelligence: discover a rival's properties, research them in parallel, extract structured attributes, compile a sourced brief for one competitor or a landscape. | `SERPER_API_KEY` |
 | [`scenario-simulate`](./skills/scenario-simulate/) | What-if against a described population. Materialise personas from a context, fan their reactions out through the gateway, return a segment-level distribution plus a narrative explaining the split. Market, electorate, users or workforce; resumable one timestep at a time. Output is synthetic by construction and must never be presented as measurement. | *(none)* |
 
-## What's deliberately not here
-
-Real GPU training jobs (SFT/RL/D2L/projector runs), compute
-provisioning/teardown, API key or BYOK-credential revocation, destructive
-data operations, and the Stimulir CLI Agent's attach-and-execute loop are
-all out of scope for this repo. Those either spend real money, destroy
-state irreversibly, or, in the CLI Agent's case, are a standing session
-loop, which breaks the same "no skill becomes a server" rule these skills
-otherwise follow. Use the Stimulir CLI or console directly for those, with
-a human confirming every step.
-
 ## Install
 
 ### `npx skills add`
