@@ -1,4 +1,4 @@
-"""Stimulir gateway client — the inference layer for every simulated turn.
+"""Stimulir gateway client: the inference layer for every simulated turn.
 
 Kept beside `_common.py` and just as dependency-light: one `httpx.post` against
 the OpenAI-compatible chat/completions surface. No SDK, so the helper runs in a
@@ -45,7 +45,7 @@ def complete(
 ) -> str:
     """One completion. Returns the assistant text.
 
-    Raises on transport/HTTP failure — callers decide whether one bad turn is
+    Raises on transport/HTTP failure, so callers decide whether one bad turn is
     fatal. `step.py` catches per persona so a single failure never sinks a batch.
     """
     body: dict[str, Any] = {

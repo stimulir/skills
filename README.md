@@ -3,11 +3,11 @@
 Agent skills for integrating the [Stimulir](https://www.stimulir.com) AI
 gateway into your own product. Each skill is a self-contained directory a
 coding agent (Claude Code, Codex, or any agent that reads `SKILL.md` files)
-can install and use directly — installed by you, the adopting engineer or
-product person, and handed to whichever agent you already run.
+can install and use directly. You install it, as the adopting engineer or
+product person, then hand it to whichever agent you already run.
 
 Stimulir's own positioning is "one gateway, every AI workflow, gets sharper
-as it runs" — the gateway swap is table stakes, the real differentiator is
+as it runs". The gateway swap is table stakes; the real differentiator is
 the feedback loop from live traffic back into better inference. These
 skills are sequenced to match that: get connected, wire your existing code
 onto the gateway, then turn the feedback loop on.
@@ -16,32 +16,33 @@ onto the gateway, then turn the feedback loop on.
 
 | Stage | Skill | What it does |
 |---|---|---|
-| 0 — Connect | [`connect`](./skills/connect/) | Install the CLI, authenticate, create a workspace-scoped key, send one real inference call, confirm the cost shows up. Minutes, not hours. |
-| 1 — Migrate | [`migrate-inference`](./skills/migrate-inference/) | Scan your own codebase for direct OpenAI/Anthropic calls and rewire them onto Stimulir — the Stimulir Python SDK (`StimulirClient`) is the preferred landing point; the OpenAI-compatible `base_url` swap is the fallback for non-Python code. |
-| 1 — Migrate (alt) | [`byok-register`](./skills/byok-register/) | Keep your existing provider contract — register your own key with Stimulir instead of switching to managed inference. |
-| 1 — Migrate (voice) | [`voice-modalities`](./skills/voice-modalities/) | Wire voice onto the gateway: one realtime WebSocket covers speech-to-speech, live transcription, and verbatim text-to-speech — omni-model native, verified live. |
-| 2 — Flywheel | [`capture-traces`](./skills/capture-traces/) | Turn live traffic into curated data assets (Raw → Cleaning → Clean View → Snapshot). This is the mechanism behind "gets sharper as it runs." |
-| 2 — Flywheel | [`privacy-layer`](./skills/privacy-layer/) | Redact/mask PII before it's captured or forwarded — sequence this *before* `capture-traces`, since captured traces become future training data. |
-| 3 — Close the loop | [`prompt-versioning`](./skills/prompt-versioning/) | Version and label prompts instead of hardcoding strings; promote through environments deliberately. |
-| 3 — Close the loop | [`eval-run`](./skills/eval-run/) | Compare a prompt or model change against a curated dataset before promoting to prod. |
-| Ongoing | [`usage-audit`](./skills/usage-audit/) | Cost-per-task visibility — runs alongside every other stage, not sequential. |
+| 0. Connect | [`connect`](./skills/connect/) | Install the CLI, authenticate, create a workspace-scoped key, send one real inference call, confirm the cost shows up. Minutes, not hours. |
+| 1. Migrate | [`migrate-inference`](./skills/migrate-inference/) | Scan your own codebase for direct OpenAI/Anthropic calls and rewire them onto Stimulir. The Stimulir Python SDK (`StimulirClient`) is the preferred landing point; the OpenAI-compatible `base_url` swap is the fallback for non-Python code. |
+| 1. Migrate (alt) | [`byok-register`](./skills/byok-register/) | Keep your existing provider contract by registering your own key with Stimulir instead of switching to managed inference. |
+| 1. Migrate (voice) | [`voice-modalities`](./skills/voice-modalities/) | Wire voice onto the gateway: one realtime WebSocket covers speech-to-speech, live transcription, and verbatim text-to-speech. Omni-model native, verified live. |
+| 2. Flywheel | [`capture-traces`](./skills/capture-traces/) | Turn live traffic into curated data assets (Raw → Cleaning → Clean View → Snapshot). This is the mechanism behind "gets sharper as it runs." |
+| 2. Flywheel | [`privacy-layer`](./skills/privacy-layer/) | Redact/mask PII before it's captured or forwarded. Sequence this *before* `capture-traces`, since captured traces become future training data. |
+| 3. Close the loop | [`prompt-versioning`](./skills/prompt-versioning/) | Version and label prompts instead of hardcoding strings; promote through environments deliberately. |
+| 3. Close the loop | [`eval-run`](./skills/eval-run/) | Compare a prompt or model change against a curated dataset before promoting to prod. |
+| Ongoing | [`usage-audit`](./skills/usage-audit/) | Cost-per-task visibility. Runs alongside every other stage, not sequential. |
 
-Everything past Stage 0 assumes `connect` has already run — the CLI is
+Everything past Stage 0 assumes `connect` has already run: the CLI is
 installed, authenticated, and pointed at the right workspace.
 
-## Research skills (managed)
+## Managed skills
 
-Agent-capability skills, not onboarding stages — imported into a workspace and
-run in the sandbox. Each declares its own external keys via a `required_secrets`
-frontmatter field, so a managed run injects them from the workspace vault (the
-gateway `STIMULIR_API_KEY` still covers inference; these are the extra,
-skill-specific keys like Serper).
+Agent capabilities rather than onboarding stages. These are imported into a
+workspace and run in the sandbox. Where a skill needs an external key it
+declares one in its `required_secrets` frontmatter and a managed run injects it
+from the workspace vault. Where that list is empty the skill needs nothing
+beyond the gateway `STIMULIR_API_KEY` a managed run already provides.
 
 | Skill | What it does | required_secrets |
 |---|---|---|
-| [`deep-research`](./skills/deep-research/) | Exhaustive web research — Serper discovery, parallel fetch/extract fan-out, cited report + CSV. HTTP-only by default; browser-use (Chromium) optional. | `SERPER_API_KEY` |
-| [`opposition-enrich`](./skills/opposition-enrich/) | Competitor/opposition intelligence — discover a rival's properties, research in parallel, extract structured attributes, compile a sourced brief (one competitor or a landscape). | `SERPER_API_KEY` |
-| [`scenario-simulate`](./skills/scenario-simulate/) | What-if against a described population — materialise personas from a context, fan their reactions out through the gateway, return a segment-level distribution plus a narrative explaining the split. Market, electorate, users or workforce; resumable one timestep at a time. Output is synthetic by construction, never measurement. | *(none — inference only)* |
+| [`web-scrape`](./skills/web-scrape/) | Plain text extraction from one URL, a list of URLs, or an index page whose links should be followed. Parallel fetch and extract, structured JSON out. No scoring and no research judgment; reach for `deep-research` when you want a cited report instead. | *(none)* |
+| [`deep-research`](./skills/deep-research/) | Exhaustive web research: Serper discovery, parallel fetch/extract fan-out, cited report plus CSV. HTTP-only by default; browser-use (Chromium) optional. | `SERPER_API_KEY` |
+| [`opposition-enrich`](./skills/opposition-enrich/) | Competitor and opposition intelligence: discover a rival's properties, research them in parallel, extract structured attributes, compile a sourced brief for one competitor or a landscape. | `SERPER_API_KEY` |
+| [`scenario-simulate`](./skills/scenario-simulate/) | What-if against a described population. Materialise personas from a context, fan their reactions out through the gateway, return a segment-level distribution plus a narrative explaining the split. Market, electorate, users or workforce; resumable one timestep at a time. Output is synthetic by construction and must never be presented as measurement. | *(none)* |
 
 ## What's deliberately not here
 
@@ -49,7 +50,7 @@ Real GPU training jobs (SFT/RL/D2L/projector runs), compute
 provisioning/teardown, API key or BYOK-credential revocation, destructive
 data operations, and the Stimulir CLI Agent's attach-and-execute loop are
 all out of scope for this repo. Those either spend real money, destroy
-state irreversibly, or — in the CLI Agent's case — are a standing session
+state irreversibly, or, in the CLI Agent's case, are a standing session
 loop, which breaks the same "no skill becomes a server" rule these skills
 otherwise follow. Use the Stimulir CLI or console directly for those, with
 a human confirming every step.
@@ -62,24 +63,26 @@ a human confirming every step.
 npx skills add stimulir/skills
 ```
 
-Six of the nine skills are standard-library only — their helpers shell
-out to the `stimulir` CLI rather than reimplementing REST auth, so there's
-no `uv sync` to run for `connect`, `migrate-inference`, `byok-register`,
-`capture-traces`, `prompt-versioning`, or `eval-run`. Three call the
-Stimulir API directly and need dependencies: `privacy-layer` and
-`usage-audit` (`httpx`), and `voice-modalities` (`stimulir[realtime]` —
-the CLI has no voice commands to shell out to):
+Six of the nine onboarding skills are standard-library only. Their helpers
+shell out to the `stimulir` CLI rather than reimplementing REST auth, so
+there is no `uv sync` to run for `connect`, `migrate-inference`,
+`byok-register`, `capture-traces`, `prompt-versioning`, or `eval-run`.
+
+The rest call an API directly and need dependencies:
+
+| Skill | Needs |
+|---|---|
+| `privacy-layer`, `usage-audit` | `httpx` |
+| `voice-modalities` | `stimulir[realtime]`, since the CLI has no voice commands to shell out to |
+| `web-scrape`, `deep-research`, `opposition-enrich` | `httpx`, `trafilatura` |
+| `scenario-simulate` | `httpx` |
 
 ```bash
 cd ~/.claude/skills/privacy-layer      # or ~/.codex/skills/privacy-layer
-uv sync   # installs httpx
-
-cd ~/.claude/skills/usage-audit
-uv sync   # installs httpx
-
-cd ~/.claude/skills/voice-modalities
-uv sync   # installs stimulir[realtime]
+uv sync
 ```
+
+Repeat per skill. Each owns its own `pyproject.toml`.
 
 ### Local clone + symlink
 
@@ -87,17 +90,15 @@ uv sync   # installs stimulir[realtime]
 git clone https://github.com/stimulir/skills.git ~/Developer/stimulir-skills
 
 cd ~/Developer/stimulir-skills/skills/privacy-layer
-uv sync   # installs httpx
-
-cd ~/Developer/stimulir-skills/skills/usage-audit
-uv sync   # installs httpx
+uv sync
 ```
 
 Then point your host at the skill directories you want:
 
 ```bash
 for s in connect migrate-inference byok-register voice-modalities capture-traces \
-         privacy-layer prompt-versioning eval-run usage-audit; do
+         privacy-layer prompt-versioning eval-run usage-audit \
+         web-scrape deep-research opposition-enrich scenario-simulate; do
   ln -s ~/Developer/stimulir-skills/skills/$s ~/.claude/skills/$s
 done
 ```
@@ -106,14 +107,17 @@ Swap `~/.claude/skills` for `~/.codex/skills` for Codex.
 
 ## Configuration
 
-Most skills shell out to the `stimulir` CLI, which handles auth itself
-(`stimulir login`, session cached in `~/.stimulir/`) — run `connect` first.
-A few skills call the Stimulir API directly instead: `privacy-layer`
-(always) and `usage-audit` (only for its REST fallback path) read
-`STIMULIR_API_KEY`; `migrate-inference`'s reference snippets document the
-same env var for the adopter's own post-migration code, but the skill
-itself makes no network calls. Where noted in a skill's own `install.md`,
-`STIMULIR_API_BASE` / `STIMULIR_PROJECT_ID` apply too.
+Most onboarding skills shell out to the `stimulir` CLI, which handles auth
+itself (`stimulir login`, session cached in `~/.stimulir/`). Run `connect`
+first.
+
+Some skills call the Stimulir API directly and read `STIMULIR_API_KEY`
+instead: `privacy-layer` (always), `usage-audit` (only on its REST fallback
+path), and `scenario-simulate` (every simulated turn is a gateway call).
+`migrate-inference`'s reference snippets document the same variable for the
+adopter's own post-migration code, but the skill itself makes no network
+calls. Where noted in a skill's own `install.md`, `STIMULIR_API_BASE` and
+`STIMULIR_PROJECT_ID` apply too.
 
 For the **adopter's application code** these skills steer to the
 **Stimulir Python SDK** (`pip install stimulir` → `StimulirClient`):
@@ -138,6 +142,10 @@ stimulir-skills/
     ├── prompt-versioning/
     ├── eval-run/
     ├── usage-audit/
+    ├── web-scrape/
+    ├── deep-research/
+    ├── opposition-enrich/
+    ├── scenario-simulate/
     └── voice-modalities/
         ├── SKILL.md
         ├── README.md

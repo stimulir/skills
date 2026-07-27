@@ -2,7 +2,7 @@
 """Run ONE timestep of a scenario simulation.
 
 Each persona reacts to the scenario, in parallel, one gateway call per persona.
-The fan-out is ordinary process-level concurrency (asyncio + a semaphore) —
+The fan-out is ordinary process-level concurrency (asyncio + a semaphore),
 the same shape `deep-research` uses for page fetches, except each parallel unit
 is an inference call. A failing persona returns an `error` entry; it never
 sinks the batch.
@@ -91,7 +91,7 @@ async def _run(
                     "reasoning": reaction.get("reasoning"),
                     "concerns": reaction.get("concerns") or [],
                 }
-            except Exception as exc:  # noqa: BLE001 — one bad turn must not abort the run
+            except Exception as exc:  # noqa: BLE001, one bad turn must not abort the run
                 return {"ok": False, "id": pid, "segment": p.get("segment"), "error": str(exc)}
 
     return await asyncio.gather(*(one(p) for p in personas))
@@ -103,7 +103,7 @@ def main() -> None:
     ap.add_argument("--scenario", required=True, help="What happens to the population now.")
     # 12 rather than 8: measured on staging, 40 personas at 8 took ~190s, which
     # overruns a managed invocation's 180s budget. Concurrency is the cheapest
-    # lever — the calls are I/O-bound.
+    # lever, since the calls are I/O-bound.
     ap.add_argument("--concurrency", type=int, default=12)
     ap.add_argument("--timeout", type=float, default=60.0)
     ap.add_argument("--model", default=None, help="Override the gateway model.")

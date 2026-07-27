@@ -1,6 +1,6 @@
-# Install — scenario-simulate
+# Install: scenario-simulate
 
-One runtime dep, no external API key. ~1 minute — the lightest of the managed
+One runtime dep, no external API key. ~1 minute, the lightest of the managed
 skills, because inference is the gateway you are already on.
 
 ## 0. Prereqs
@@ -14,7 +14,7 @@ pip install "httpx>=0.27"
 ```
 
 `httpx` plus the standard library is the whole footprint. No browser, no ML
-framework, no simulation library — the loop is `asyncio` and the reasoning is
+framework, no simulation library. The loop is `asyncio` and the reasoning is
 the gateway. That is what keeps it runnable in a bare sandbox and cheap to cold
 start.
 
@@ -24,7 +24,7 @@ start.
 export STIMULIR_API_KEY="hyb_..."
 ```
 
-This is the workspace's ordinary inference key, not a skill-specific secret —
+This is the workspace's ordinary inference key, not a skill-specific secret,
 which is why `required_secrets` is empty and a managed run needs no vault entry
 beyond what it already injects.
 
@@ -36,7 +36,7 @@ export STIMULIR_PROJECT_ID="..."                       # sent as X-Project-Id wh
 export STIMULIR_MODEL="stimulir/fusion"                # default
 ```
 
-## 2. Smoke test — no network needed
+## 2. Smoke test, no network needed
 
 ```bash
 cd helpers
@@ -55,15 +55,15 @@ ln -s "$PWD" ~/.codex/skills/scenario-simulate     # Codex
 
 ## Notes
 
-- No key ever goes on a command line — `STIMULIR_API_KEY` is read from the
+- No key ever goes on a command line. `STIMULIR_API_KEY` is read from the
   environment only, which is what makes the skill safe to run managed.
 - Cost and wall-clock scale as personas × timesteps. Start at `--n 20` and one
   step.
 - **Measured on staging** (`stimulir/fusion`): 40 personas at `--concurrency 8`
-  took **190s — over the 180-second managed budget**. At the default
+  took **190s, over the 180-second managed budget**. At the default
   `--concurrency 12` the same population fits. Concurrency is the cheapest lever
   because the calls are I/O-bound; if you raise `--n`, raise concurrency with it
   and time one step locally before running it managed.
 - Two personas in that run failed with read timeouts and the batch completed
-  regardless — that is the intended behaviour, not a fault. Check `failed` in the
+  regardless. That is the intended behaviour, not a fault. Check `failed` in the
   aggregate before trusting a distribution.
