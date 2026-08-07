@@ -1,6 +1,8 @@
 ---
 name: connect
 description: Stage 0 of stimulir client onboarding -- get from zero to a working, authenticated, cost-visible connection to stimulir in minutes (install the CLI, authenticate, select a workspace, send one real inference call, see its cost). Use when a user has no stimulir CLI set up yet, asks to "connect to stimulir" / "onboard to stimulir" / "get stimulir working", or any other stimulir skill's preflight reports the CLI missing or unauthenticated.
+metadata:
+  category: operator
 ---
 
 # Connect

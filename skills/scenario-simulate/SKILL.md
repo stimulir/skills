@@ -1,7 +1,8 @@
 ---
 name: scenario-simulate
-description: Simulate how a described population reacts to a change, and get back a distribution and a narrative: why they split, not just how much. Give it a context (who these people are) and a scenario (what happens to them); it materialises personas, runs their reactions in parallel through the gateway, and folds the result into segment-level counts plus a written explanation. Use for "what if" questions about a market, an electorate, a user base, or a workforce: campaign and pricing what-ifs, policy reaction, feature reception, message testing. Agent-driven, resumable one timestep at a time. Output is synthetic by construction and must never be presented as measurement.
-required_secrets: []
+description: 'Simulate how a described population reacts to a change, and get back a distribution and a narrative: why they split, not just how much. Give it a context (who these people are) and a scenario (what happens to them); it materialises personas, runs their reactions in parallel through the gateway, and folds the result into segment-level counts plus a written explanation. Use for "what if" questions about a market, an electorate, a user base, or a workforce: campaign and pricing what-ifs, policy reaction, feature reception, message testing. Agent-driven, resumable one timestep at a time. Output is synthetic by construction and must never be presented as measurement.'
+metadata:
+  category: managed
 ---
 
 # Scenario Simulate
@@ -20,10 +21,13 @@ parallel, and count deterministically.
 ## Secrets this skill needs
 
 None of its own. Inference runs on the workspace's gateway key
-(`STIMULIR_API_KEY`), which a managed run already injects. That is why
-`required_secrets` above is empty, unlike the Serper-backed research skills.
+(`STIMULIR_API_KEY`), which a managed run already injects. Nothing extra has to
+be added to the vault for this skill, unlike the Serper-backed research skills.
 Standalone, export `STIMULIR_API_KEY` yourself; `STIMULIR_API_BASE`,
 `STIMULIR_PROJECT_ID` and `STIMULIR_MODEL` are optional overrides.
+
+Needing one key is not the same as being scoped to one. A managed run injects
+every key the workspace vault holds, and nothing in this file narrows that.
 
 ## Preflight
 

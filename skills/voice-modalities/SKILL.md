@@ -1,6 +1,8 @@
 ---
 name: voice-modalities
 description: Generate spoken audio from text, transcribe speech, or run a live voice session on stimulir — one realtime lane covers all three, usable as a single command with just a STIMULIR_API_KEY (no integration work required). Also the integration guide for wiring an application onto the voice lane. Use when a user wants audio generated from text (a brief, summary, or message read aloud), speech transcribed, a live voice session, or to add voice to an app on stimulir.
+metadata:
+  category: operator
 ---
 
 # Voice Modalities

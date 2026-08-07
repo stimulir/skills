@@ -1,7 +1,8 @@
 ---
 name: web-scrape
-description: Plain web and social text scraping — give it one URL, a list of URLs, or a page whose links should be followed, and it fetches and extracts clean main-body text in parallel, emitting structured JSON (and optionally concatenated text/markdown). Use when the user just wants the text of some pages: "scrape this page", "get the text of these links", "pull the articles off this index page", "grab this public profile/post." Agent-driven: you pick what to scrape; the helpers do the deterministic fetch + extract. No research judgment, no scoring — reach for deep-research when the user wants a fact-checked, cited report instead.
-required_secrets: []
+description: 'Plain web and social text scraping — give it one URL, a list of URLs, or a page whose links should be followed, and it fetches and extracts clean main-body text in parallel, emitting structured JSON (and optionally concatenated text/markdown). Use when the user just wants the text of some pages: "scrape this page", "get the text of these links", "pull the articles off this index page", "grab this public profile/post." Agent-driven: you pick what to scrape; the helpers do the deterministic fetch + extract. No research judgment, no scoring — reach for deep-research when the user wants a fact-checked, cited report instead.'
+metadata:
+  category: managed
 ---
 
 # Web Scrape
@@ -21,15 +22,18 @@ real browser is available, `--browser` routes each fetch through browser-use.
 
 ## Secrets this skill needs
 
-- **None by default.** `required_secrets` is an empty list. The core path —
-  fetch, extract, and follow-links — is HTTP-only (`httpx` + `trafilatura` + the
-  standard library) and needs no external API key at all. That is what makes it
-  safe to run anywhere, including a bare managed sandbox, with zero vault setup.
+- **None by default.** The core path (fetch, extract, and follow-links) is
+  HTTP-only (`httpx` + `trafilatura` + the standard library) and needs no
+  external API key at all. That is what makes it safe to run anywhere,
+  including a bare managed sandbox, with zero vault setup.
 - The optional **`--browser`** path is the only exception: browser-use is itself
   an agent, so it needs a browser binary (Chromium) **and** an LLM key from the
   environment (`STIMULIR_API_KEY` in a managed run, or your own provider key
-  standalone). That key is supplied by the environment, never by this skill —
-  which is why it is *not* in `required_secrets`.
+  standalone). That key is supplied by the environment, never by this skill.
+
+Reading no key is not the same as reaching no key. A managed run injects every
+key the workspace vault holds, and nothing in this file narrows that. This
+section says what the skill uses.
 
 ## A note on social pages — read before promising anything
 

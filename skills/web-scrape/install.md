@@ -18,10 +18,9 @@ bare sandbox.
 
 ## 1. Secrets — none required
 
-The default path (fetch + extract + follow-links) needs **no external API key**,
-which is why the skill's frontmatter declares `required_secrets: []`. Nothing to
-export, nothing for a managed run to inject. That is the whole point: it is safe
-to run anywhere with zero vault setup.
+The default path (fetch + extract + follow-links) needs **no external API key**.
+Nothing to export, nothing to add to the workspace vault. That is the whole
+point: it is safe to run anywhere with zero vault setup.
 
 ## 2. Browser upgrade (optional)
 

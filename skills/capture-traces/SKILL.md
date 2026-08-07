@@ -1,6 +1,8 @@
 ---
 name: capture-traces
 description: Turn live inference traffic already flowing through Stimulir (from the migrate-inference stage) into curated data assets, and move those assets through the Raw → Cleaning → Clean View → Snapshot → Lab pipeline one stage at a time. Use when the user wants to capture a trace as a dataset, promote/clean/stage a data asset, snapshot a dataset version, or otherwise turn production inference traffic into eval/training data -- this is the literal mechanism behind "gets sharper as it runs." Sequence AFTER a privacy-layer skill has scrubbed PII from the same traffic; do not use on raw, unscrubbed traces.
+metadata:
+  category: operator
 ---
 
 # Capture Traces

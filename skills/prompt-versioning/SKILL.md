@@ -1,6 +1,8 @@
 ---
 name: prompt-versioning
 description: Manage prompts as versioned, labeled assets in the Stimulir workspace instead of hardcoded strings scattered through the adopter's codebase -- create a new prompt version, promote a version to an environment label (e.g. staging/prod), or resolve a prompt by key+label. Use when the user wants to edit, iterate on, roll back, or promote a prompt that currently lives as a string literal in their code, or asks to "version" / "label" / "deploy" a prompt change.
+metadata:
+  category: operator
 ---
 
 # Prompt Versioning

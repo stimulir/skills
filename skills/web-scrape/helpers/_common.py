@@ -23,8 +23,8 @@ def require_env(name: str) -> str:
     """Return env var `name` or exit with a clear, actionable message.
 
     This is the single place a missing skill secret surfaces. The message
-    names the exact variable so a managed-skills run knows which vault key
-    to inject (see the skill's `required_secrets`).
+    names the exact variable so the operator knows which key the workspace
+    vault has to hold before a managed run starts.
     """
     val = os.environ.get(name)
     if not val or not val.strip():

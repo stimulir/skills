@@ -1,6 +1,8 @@
 ---
 name: migrate-inference
 description: Find direct LLM provider SDK/HTTP calls (OpenAI, Anthropic) inside an ADOPTER'S OWN application codebase and rewire them onto stimulir — preferring the Stimulir Python SDK (StimulirClient) as the landing point, with the OpenAI-compatible base_url swap as the fallback for non-Python or must-stay-OpenAI-shaped code. Use when a user wants to migrate/point their existing app's LLM calls at stimulir, add stimulir as an inference provider to a project that already calls OpenAI or Anthropic directly, or audit a repo for hardcoded provider API usage before a gateway migration.
+metadata:
+  category: operator
 ---
 
 # Migrate Inference

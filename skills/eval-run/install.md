@@ -1,7 +1,7 @@
 # Install — eval-run
 
-Assumes `connect` has already run (`stimulir` CLI installed, authenticated,
-workspace selected) -- that setup is not repeated here. ~2 minutes.
+Assumes `connect` has already run: `stimulir` CLI installed, authenticated,
+workspace selected. That setup is not repeated here. Around 2 minutes.
 
 ## 0. Prereqs
 
@@ -10,15 +10,14 @@ stimulir --version
 python3 --version   # >=3.10
 ```
 
-Both helpers (`create_eval_run.py`, `poll_eval_run.py`) use only the Python
-standard library (`argparse`, `json`, `subprocess`, `shutil`, `time`, `sys`)
--- there is nothing to `pip install` or `uv sync` for this skill to run.
-`pyproject.toml` exists to declare the skill and its (empty) runtime
-dependency set, plus dev tooling (`pytest`, `ruff`) if you're editing the
-helpers themselves:
+Both helpers (`create_eval_run.py`, `check_eval_run.py`) use only the Python
+standard library (`argparse`, `json`, `subprocess`, `shutil`, `sys`). There is
+nothing to `pip install` or `uv sync` for this skill to run. `pyproject.toml`
+declares the skill and its empty runtime dependency set, plus dev tooling
+(`pytest`, `ruff`) if you are editing the helpers themselves:
 
 ```bash
-# only needed if you're developing/testing this skill's helpers
+# only needed if you are developing/testing this skill's helpers
 uv sync
 ```
 
@@ -48,51 +47,73 @@ npx skills add stimulir/skills
 
 ## 2. Auth (already handled by `connect`)
 
-This skill does not do its own authentication -- it shells out to the
-`stimulir` CLI, which reads its session from `~/.stimulir/` (set up once by
-`connect`). Confirm it's live:
+This skill does no authentication of its own. It shells out to the `stimulir`
+CLI, which reads its session from `~/.stimulir/` (set up once by `connect`).
+Confirm it is live:
 
 ```bash
-stimulir lab eval create-run --help
+stimulir lab eval --help
 ```
 
-If that fails with an auth error, re-run `connect` (or whatever your
-environment's login flow is) before using this skill -- there is no
-fallback auth path here, by design (see `SKILL.md`'s placement rationale
-for why this skill deliberately does not reimplement
-`Authorization: Bearer $STIMULIR_TOKEN` / `X-Business-Profile-Id:
-$WORKSPACE_ID` itself).
+If that fails with an auth error, re-run `connect` before using this skill.
+There is no fallback auth path here, by design: see `SKILL.md`. The MCP
+server exposes no lab tools, so shelling out to the CLI is the only path.
 
-## 3. Verify
+## 3. Console deep links
+
+The CLI prints an openable console link every time it starts a run. That link
+is `{console_base}/workspaces/lab/evaluate?run=<run-id>`, plus `&view=tree`
+for the tree view. When the console origin cannot be resolved the CLI prints
+the run id and names the variable instead of guessing a host:
+
+```bash
+export STIMULIR_CONSOLE_BASE=https://console.stimulir.com
+# or set "console_base" in ~/.stimulir/config.json
+```
+
+Neither helper reconstructs the link. The CLI also derives it from the API
+base as a fallback, and a second implementation would drift.
+
+## 4. Verify
 
 ```bash
 cd ~/Developer/stimulir-skills/skills/eval-run
 
-# helper scripts import cleanly and show usage
+# helpers import cleanly and show usage
 python3 helpers/create_eval_run.py --help
-python3 helpers/poll_eval_run.py --help
+python3 helpers/check_eval_run.py --help
 
 # confirm the underlying CLI subcommands exist and are authenticated
+stimulir lab eval runs --limit 1
 stimulir lab eval create-run --help
-stimulir lab eval get-run --help
+stimulir lab eval get --help
+stimulir lab eval tree --help
 ```
 
-There is no safe no-op smoke test for `create_eval_run.py` beyond `--help`
--- creating a run needs a real `--data-asset-id` (a reviewed, snapshotted
-data asset) and a real `--prompt <key>:<version>` reference, both of which
-are specific to your workspace. Don't fabricate placeholder IDs just to
-exercise the happy path; run it for real against a data asset you've
-actually reviewed, the first time you use this skill for a genuine
-prompt/model comparison.
+`stimulir lab eval runs --limit 1` is the only real smoke test that costs
+nothing: it is a read against the selected workspace, so it proves auth and
+scope in one call. There is no safe no-op for `create_eval_run.py` beyond
+`--help`, because starting a run needs a real `--data-asset-id` (a reviewed,
+snapshotted data asset) and a real `--prompt` ref. Do not fabricate
+placeholder ids to exercise the happy path. Run it for real the first time
+you have a genuine comparison to make.
 
-## 4. Notes
+## 5. Notes
 
-- Neither helper starts a server or a background process. `poll_eval_run.py`
-  loops in the foreground with a bounded `--timeout-seconds` (default
-  1800s / 30 min) and always exits -- it does not detach or daemonize.
-- `create_eval_run.py --execute` starts real evaluation work (inference
-  calls against every row in the data asset) -- treat it like any other
-  costed action, not a free dry run. Omit `--execute` to create the run
-  queued and inspect it before committing to a full pass.
-- If your `stimulir` binary isn't on `PATH` under the name `stimulir`, pass
+- **Neither helper waits.** `check_eval_run.py` performs exactly one status
+  read and returns; it has no interval or timeout arguments, and there is no
+  `--wait` flag anywhere in `stimulir lab eval`. It replaced an earlier
+  `poll_eval_run.py` that looped in the foreground. Do not reintroduce that,
+  and do not wrap either helper in a shell loop.
+- **`--execute` is the normal path.** `create-run` always sends
+  `queue: true, execute: false` and issues the start as a separate call.
+  Without `--execute` the run is created QUEUED with no executor spawned, and
+  nothing polls for queued runs, so it never starts. `create_eval_run.py`
+  therefore requires exactly one of `--execute` or `--leave-queued`.
+- `--execute` starts real inference and judging across every case times every
+  candidate. Treat it as a costed action.
+- `stimulir lab eval delete` archives by default and archiving is one-way
+  (there is no un-archive endpoint). `--hard` destroys rows and refuses on a
+  run with descendants. Confirm with the user before either.
+- If your `stimulir` binary is not on `PATH` under the name `stimulir`, pass
   `--stimulir-bin /path/to/stimulir` to either helper.

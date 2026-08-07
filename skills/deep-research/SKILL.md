@@ -1,8 +1,8 @@
 ---
 name: deep-research
-description: Exhaustive web research on a topic, market, or set of targets — discover sources with Serper, fetch and extract many in parallel, then synthesize a cited report and CSV. Use when the user wants a thorough, multi-source, evidence-backed answer: competitor/opposition research, a list of companies matching an ICP, market landscape, prospect enrichment, or "find everything about X." Agent-driven: you do the judgment (which sources, how to score, what to conclude); the helpers do the deterministic heavy lifting.
-required_secrets:
-  - SERPER_API_KEY
+description: 'Exhaustive web research on a topic, market, or set of targets — discover sources with Serper, fetch and extract many in parallel, then synthesize a cited report and CSV. Use when the user wants a thorough, multi-source, evidence-backed answer: competitor/opposition research, a list of companies matching an ICP, market landscape, prospect enrichment, or "find everything about X." Agent-driven: you do the judgment (which sources, how to score, what to conclude); the helpers do the deterministic heavy lifting.'
+metadata:
+  category: managed
 ---
 
 # Deep Research
@@ -20,13 +20,16 @@ browser-use, and each browser-use process is itself a research sub-agent.
 ## Secrets this skill needs
 
 - **`SERPER_API_KEY`** — required, for the discovery search (serper.dev; 2,500
-  free queries). In a managed run it is injected from the workspace vault; the
-  frontmatter `required_secrets` above is what tells the platform to prompt for
-  it. Standalone, export it yourself.
-- The LLM key is **not** listed here — synthesis is your reasoning, and the
-  optional `--browser` path uses whatever model key the environment already
-  provides (`STIMULIR_API_KEY` in a managed run). Only genuinely external,
-  skill-specific keys go in `required_secrets`.
+  free queries). A managed run injects the workspace vault wholesale, so this
+  key has to be in that workspace's vault before the run starts. Standalone,
+  export it yourself.
+- No LLM key is needed on top. Synthesis is your reasoning, and the optional
+  `--browser` path uses whatever model key the environment already provides
+  (`STIMULIR_API_KEY` in a managed run).
+
+Nothing in this file scopes the vault down to the one key named above. The
+sandbox injects every key the workspace holds. Treat this section as what the
+skill reads, not as a boundary on what it could reach.
 
 ## Preflight
 
@@ -96,7 +99,7 @@ CSV, judgment intact. It never calls a model.
 ## Anti-patterns
 
 - **Putting `SERPER_API_KEY` (or any key) on a command line or into params.**
-  It belongs in the environment only — that's why it's a `required_secret`.
+  It belongs in the environment only, read there by the helper.
 - **Fabricating a citation.** Every `evidence` quote must be lifted verbatim
   from an extracted `text`, with its real `source` URL.
 - **Assuming `--browser` works.** It needs Chromium; default to the http path

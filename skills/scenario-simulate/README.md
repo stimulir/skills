@@ -6,7 +6,8 @@ and fold the result into a segment-level distribution plus a narrative
 explaining *why* they split. Domain-agnostic across market, electorate, user base and
 workforce, because the capability was never the domain. Resumable one timestep
 at a time, so a long run survives the managed 180-second budget. `httpx` is the
-only dependency and inference rides the workspace gateway key, so
-`required_secrets` is empty. Output is synthetic by construction and carries
+only dependency and inference rides the workspace gateway key, so no extra vault
+entry is needed. `metadata.category: managed`. Output is synthetic by
+construction and carries
 `"synthetic": true` plus its `basis`. Never present it as measurement. See
 [`SKILL.md`](./SKILL.md) and [`install.md`](./install.md).
