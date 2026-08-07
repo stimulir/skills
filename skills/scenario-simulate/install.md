@@ -24,9 +24,8 @@ start.
 export STIMULIR_API_KEY="hyb_..."
 ```
 
-This is the workspace's ordinary inference key, not a skill-specific secret,
-which is why `required_secrets` is empty and a managed run needs no vault entry
-beyond what it already injects.
+This is the workspace's ordinary inference key, not a skill-specific secret, so
+a managed run needs no vault entry beyond what it already injects.
 
 Optional overrides:
 

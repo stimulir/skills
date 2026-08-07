@@ -1,28 +1,32 @@
 #!/usr/bin/env python3
-"""Create a lab eval run via the stimulir CLI.
+"""Start a Lab eval run via the stimulir CLI, with one guard the CLI lacks.
 
-Thin wrapper around `stimulir lab eval create-run` -- shells out rather than
-reimplementing REST auth, per this repo's convention: the stimulir CLI
-already handles login/session caching in ~/.stimulir/, so every skill that
-just needs to DO a CLI-shaped action shells out to it instead of re-deriving
-Authorization / X-Business-Profile-Id headers itself.
+Thin wrapper around `stimulir lab eval create-run`. It shells out rather than
+reimplementing REST auth, per this repo's convention: the CLI already owns
+login and workspace selection in ~/.stimulir/.
 
-This helper is DUMB on purpose. It does not decide which data asset or
-prompt version to evaluate against, does not decide whether to pass
---execute, and does not interpret the result -- it builds one CLI invocation
-from explicit flags, runs it, and returns the CLI's own --json output
-(or a structured error) on stdout. All judgment (is the data asset a real
-reviewed snapshot? is this prompt version ready to compare? should the run
-execute immediately or stay queued?) belongs to the agent reading SKILL.md,
-not to this script.
+THE GUARD. `create-run` sends `queue: true, execute: false` on every call.
+Without `--execute` the run is created QUEUED with no executor spawned, and
+nothing anywhere polls for queued runs, so it sits forever while its status
+claims otherwise. That is a stranded run, not a dry run. This helper
+therefore requires the caller to say which one they meant: pass --execute to
+start it, or --leave-queued to acknowledge that it will not start until
+`stimulir lab eval execute-run <id>` is called. Neither flag is a default,
+because guessing either one produces a silent failure.
 
---execute is opt-in and named explicitly to make its cost/effect visible in
-any command line or log that invoked this helper -- creating a run can be
-free/cheap (queued for later) but --execute kicks off real evaluation work
-against the data asset immediately.
+WHY NO --json. The console deep link is printed on the CLI's human path only,
+by `_print_handoff`. `create-run --json` drops it, so this helper runs the
+human path and passes stdout through verbatim: the run id, the status and an
+openable link are the deliverable here. A caller that needs a machine-shaped
+payload should invoke `stimulir lab eval create-run ... --json` directly and
+accept that no link is printed.
+
+WHAT IT DOES NOT DO. It does not decide which data asset or prompt version is
+worth evaluating, does not wait for the run, and does not interpret the
+result. `--execute` starts real inference and judging across every case times
+every candidate. That spend decision belongs to the agent reading SKILL.md.
 """
 import argparse
-import json
 import shutil
 import subprocess
 import sys
@@ -30,19 +34,32 @@ import sys
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--name", required=True, help="human-readable name for the eval run")
+    parser.add_argument("--name", required=True, help="eval suite display name")
     parser.add_argument(
-        "--data-asset-id", required=True,
-        help="ID of the curated data asset (snapshot) to evaluate against",
+        "--data-asset-id", default=None,
+        help="reviewed, snapshotted data asset (or trace snapshot) id to evaluate against",
     )
     parser.add_argument(
-        "--prompt", required=True,
-        help="prompt reference as <key>:<version>, e.g. summarize-ticket:4",
+        "--prompt", action="append", default=[],
+        help="prompt ref as KEY, KEY:VERSION or KEY:LABEL. Repeat for several.",
+    )
+    parser.add_argument("--provider", default=None, help="baseline provider (CLI default: hybrie)")
+    parser.add_argument(
+        "--model", default=None,
+        help="baseline model or endpoint model name (CLI default: hybrie-runtime-default)",
+    )
+    parser.add_argument(
+        "--adapter-id", default=None,
+        help="adapter id to add as a hot-swap candidate alongside the baseline",
     )
     parser.add_argument(
         "--execute", action="store_true",
-        help="start execution immediately after creating the run (real eval "
-             "work against the data asset -- omit to leave the run queued)",
+        help="queue the run AND spawn its executor. Returns immediately; it does not wait.",
+    )
+    parser.add_argument(
+        "--leave-queued", action="store_true",
+        help="create the run without starting it. It will NOT run until "
+             "`stimulir lab eval execute-run <id>` is called.",
     )
     parser.add_argument(
         "--stimulir-bin", default="stimulir",
@@ -50,49 +67,64 @@ def main():
     )
     args = parser.parse_args()
 
-    if ":" not in args.prompt:
+    if args.execute == args.leave_queued:
         raise SystemExit(
-            f"create_eval_run.py: --prompt must be in <key>:<version> form, got {args.prompt!r}"
+            "create_eval_run.py: pass exactly one of --execute or --leave-queued. "
+            "A run created without --execute is QUEUED with no executor and nothing "
+            "polls for queued runs, so it never starts on its own. Say which you meant."
+        )
+
+    if not args.data_asset_id and not args.prompt:
+        raise SystemExit(
+            "create_eval_run.py: pass --data-asset-id, --prompt, or both. With neither, "
+            "the CLI creates a `manual` run with no cases and no prompt refs, which "
+            "measures nothing. If an empty manual run is genuinely what you want, call "
+            "the CLI directly."
         )
 
     if not shutil.which(args.stimulir_bin):
         raise SystemExit(
             f"create_eval_run.py: {args.stimulir_bin!r} not found on PATH. This helper "
-            "shells out to the stimulir CLI rather than reimplementing REST auth -- "
-            "install and authenticate it first (see install.md), or pass "
+            "shells out to the stimulir CLI rather than reimplementing REST auth. "
+            "Install and authenticate it first (see install.md), or pass "
             "--stimulir-bin with a valid path."
         )
 
-    cmd = [
-        args.stimulir_bin, "lab", "eval", "create-run",
-        "--name", args.name,
-        "--data-asset-id", args.data_asset_id,
-        "--prompt", args.prompt,
-        "--json",
-    ]
+    cmd = [args.stimulir_bin, "lab", "eval", "create-run", "--name", args.name]
+    if args.data_asset_id:
+        cmd += ["--data-asset-id", args.data_asset_id]
+    for ref in args.prompt:
+        # No shape validation here. The CLI accepts KEY, KEY:VERSION and
+        # KEY:LABEL, and an earlier version of this helper rejected two of the
+        # three by requiring a colon.
+        cmd += ["--prompt", ref]
+    if args.provider:
+        cmd += ["--provider", args.provider]
+    if args.model:
+        cmd += ["--model", args.model]
+    if args.adapter_id:
+        cmd += ["--adapter-id", args.adapter_id]
     if args.execute:
         cmd.append("--execute")
 
     proc = subprocess.run(cmd, capture_output=True, text=True)
+    sys.stdout.write(proc.stdout)
+    if proc.stderr:
+        sys.stderr.write(proc.stderr[-4000:])
 
     if proc.returncode != 0:
-        sys.stderr.write(proc.stderr[-4000:] if proc.stderr else "")
         raise SystemExit(
             f"create_eval_run.py: 'stimulir lab eval create-run' failed "
-            f"(exit {proc.returncode}). Check --data-asset-id and --prompt exist "
-            f"and STIMULIR_TOKEN / workspace selection are valid."
+            f"(exit {proc.returncode}). If the run was created but did NOT start, the "
+            f"CLI names the run id above. Start it with `stimulir lab eval execute-run "
+            f"<id>` rather than creating a second run."
         )
 
-    stdout = proc.stdout.strip()
-    try:
-        result = json.loads(stdout)
-    except json.JSONDecodeError:
-        raise SystemExit(
-            f"create_eval_run.py: expected JSON from 'stimulir lab eval create-run "
-            f"--json' but got non-JSON output: {stdout[:500]!r}"
+    if args.leave_queued:
+        sys.stderr.write(
+            "create_eval_run.py: run is QUEUED and will not start on its own. "
+            "Start it with `stimulir lab eval execute-run <run-id>`.\n"
         )
-
-    print(json.dumps(result, indent=2))
 
 
 if __name__ == "__main__":

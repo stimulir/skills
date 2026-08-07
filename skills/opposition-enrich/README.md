@@ -6,5 +6,5 @@ their web properties, research them in parallel, extract structured attributes
 strengths/weaknesses), and compile a sourced brief — one competitor or a
 side-by-side landscape. Same research engine as `deep-research`, pointed at one
 entity. HTTP-only by default (sandbox-native); browser-use (Chromium) optional.
-Declares `required_secrets: [SERPER_API_KEY]`. See [`SKILL.md`](./SKILL.md) and
-[`install.md`](./install.md).
+Needs `SERPER_API_KEY` in the workspace vault. `metadata.category: managed`. See
+[`SKILL.md`](./SKILL.md) and [`install.md`](./install.md).

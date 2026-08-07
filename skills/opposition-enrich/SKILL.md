@@ -1,8 +1,8 @@
 ---
 name: opposition-enrich
-description: Competitor / opposition intelligence — given a rival, target, or opponent (by name or URL), find their web properties, research them in parallel, extract structured attributes (positioning, pricing, funding, headcount, key people, recent moves, strengths/weaknesses), and compile a sourced competitive brief. Use when the user wants to profile a competitor, enrich a target account, build a battlecard, or size up an opponent. Agent-driven: you extract and judge the attributes from the evidence; the helpers do discovery, parallel fetch, and brief formatting.
-required_secrets:
-  - SERPER_API_KEY
+description: 'Competitor / opposition intelligence — given a rival, target, or opponent (by name or URL), find their web properties, research them in parallel, extract structured attributes (positioning, pricing, funding, headcount, key people, recent moves, strengths/weaknesses), and compile a sourced competitive brief. Use when the user wants to profile a competitor, enrich a target account, build a battlecard, or size up an opponent. Agent-driven: you extract and judge the attributes from the evidence; the helpers do discovery, parallel fetch, and brief formatting.'
+metadata:
+  category: managed
 ---
 
 # Opposition Enrich
@@ -16,12 +16,16 @@ parallel, and format.
 ## Secrets this skill needs
 
 - **`SERPER_API_KEY`** — required, for discovering the opponent's properties and
-  recent news (serper.dev). Injected from the workspace vault in a managed run
-  (that's what the `required_secrets` frontmatter above declares); export it
-  yourself standalone.
-- No LLM key is listed — the attribute extraction and judgment are your
+  recent news (serper.dev). A managed run injects the workspace vault wholesale,
+  so this key has to be in that workspace's vault before the run starts. Export
+  it yourself standalone.
+- No LLM key is needed on top. The attribute extraction and judgment are your
   reasoning, and the optional `--browser` path uses the environment's existing
   model key (`STIMULIR_API_KEY` in a managed run).
+
+Nothing in this file scopes the vault down to the one key named above. The
+sandbox injects every key the workspace holds. Treat this section as what the
+skill reads, not as a boundary on what it could reach.
 
 ## Preflight
 
@@ -92,7 +96,7 @@ sequence for a side-by-side read.
 - **Guessing an attribute.** Funding, headcount, pricing — only what a source
   states. Omit rather than invent.
 - **Any key on a command line or in params.** `SERPER_API_KEY` lives in the
-  environment; that's why it's a `required_secret`.
+  environment, read there by the helper.
 - **Trusting a same-name company.** Confirm each URL actually belongs to the
   opponent before you research it — many names collide.
 - **A single search.** Positioning, pricing, funding, and people rarely live on

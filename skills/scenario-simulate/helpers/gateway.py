@@ -5,7 +5,7 @@ the OpenAI-compatible chat/completions surface. No SDK, so the helper runs in a
 bare sandbox with only httpx installed.
 
 Inference is covered by the gateway key the workspace already injects, so this
-skill declares no `required_secrets` of its own.
+skill needs no vault entry of its own.
 """
 from __future__ import annotations
 

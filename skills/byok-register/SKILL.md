@@ -1,6 +1,8 @@
 ---
 name: byok-register
 description: Register an adopter's OWN existing provider API key (OpenAI, Anthropic, Gemini, Mistral, Bedrock, Azure OpenAI, Together AI, Nebius) with Stimulir as a bring-your-own-key credential, then verify it -- so the adopter keeps their existing provider contract/pricing while still getting Stimulir's gateway benefits (metering, fusion, privacy). Use when the user wants to connect a provider key they already have, as the alternate Stage 1 path to provisioning a new hyb_* managed key. Add + verify only -- this skill does not remove or rotate credentials.
+metadata:
+  category: operator
 ---
 
 # BYOK Register

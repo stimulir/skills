@@ -4,7 +4,7 @@
 Over-collects so the agent can filter: pass --num generously and let the
 agent's own judgment pick which results are worth deep-researching.
 
-Needs SERPER_API_KEY (a deep-research required_secret). Get 2,500 free
+Needs SERPER_API_KEY from the environment. Get 2,500 free
 queries at serper.dev.
 
   python3 search_serper.py "series B fintech london" --num 20

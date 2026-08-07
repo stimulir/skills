@@ -23,9 +23,9 @@ sandbox.
 export SERPER_API_KEY="..."   # from serper.dev — 2,500 free queries on signup
 ```
 
-The skill's one `required_secret`. Injected from the workspace vault in a
-managed Stimulir run; export it yourself standalone. Helpers fail loudly with
-the exact variable name if it's missing.
+The skill's one external key. A managed Stimulir run injects the whole
+workspace vault, so add it to that vault; export it yourself standalone.
+Helpers fail loudly with the exact variable name if it's missing.
 
 ## 2. Browser upgrade (optional)
 
@@ -51,5 +51,5 @@ ln -s "$PWD" ~/.codex/skills/opposition-enrich      # Codex
 ## Notes
 
 - No key ever goes on a command line — `SERPER_API_KEY` is read from the
-  environment only. That is what makes the skill safe to run as a managed skill
-  where the platform injects the key.
+  environment only. That is what makes the skill safe to run as a managed skill,
+  where the platform injects the whole workspace vault into the environment.

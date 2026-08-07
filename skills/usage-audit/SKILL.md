@@ -1,6 +1,8 @@
 ---
 name: usage-audit
 description: Get cost-per-task visibility into stimulir spend -- aggregated usage summaries, raw usage events for reconciliation, and account-level billing snapshots. Use whenever the user asks what something cost, wants a spend breakdown by model/task/agent, needs to audit or reconcile billing, or wants this running alongside another skill/pipeline to track its cost as it runs. Entirely read-only.
+metadata:
+  category: operator
 ---
 
 # Usage Audit

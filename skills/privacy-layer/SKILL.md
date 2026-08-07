@@ -1,6 +1,8 @@
 ---
 name: privacy-layer
 description: Redact/mask PII (names, emails, phone numbers, SSNs, addresses, etc.) in agent-collected text BEFORE it is persisted as a data asset or forwarded to a model. Use whenever an agent has scraped, transcribed, extracted, or otherwise collected free text from an untrusted or user-facing source and needs to know what PII it contains, or needs to redact it, before writing it to storage, a data asset, a log, or a prompt sent to any model. CPU-only, no GPU/model-weight cost -- three thin wrappers around Stimulir's hosted privacy REST endpoints.
+metadata:
+  category: operator
 ---
 
 # Privacy Layer

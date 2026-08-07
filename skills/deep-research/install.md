@@ -22,9 +22,9 @@ bare sandbox.
 export SERPER_API_KEY="..."   # from serper.dev — 2,500 free queries on signup
 ```
 
-This is the skill's one `required_secret`. In a managed Stimulir run it is
-injected from the workspace vault automatically; standalone, export it yourself.
-The helpers fail loudly with the exact variable name if it's missing.
+This is the skill's one external key. A managed Stimulir run injects the whole
+workspace vault, so add it to that vault; standalone, export it yourself. The
+helpers fail loudly with the exact variable name if it's missing.
 
 ## 2. Browser upgrade (optional)
 
@@ -54,4 +54,5 @@ ln -s "$PWD" ~/.codex/skills/deep-research       # Codex
   the only outbound dependency on the default path.
 - No key ever goes on a command line — `SERPER_API_KEY` is read from the
   environment only. That is deliberate: it is what makes the skill safe to run
-  as a managed skill where the platform injects the key.
+  as a managed skill, where the platform injects the whole workspace vault into
+  the environment.
