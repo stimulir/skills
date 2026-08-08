@@ -104,8 +104,10 @@ def main():
         cmd += ["--model", args.model]
     if args.adapter_id:
         cmd += ["--adapter-id", args.adapter_id]
-    if args.execute:
-        cmd.append("--execute")
+    # Forward BOTH, not just --execute. The CLI now requires exactly one of them
+    # for the same reason this helper does, so forwarding only --execute made
+    # --leave-queued reach `create-run` with neither flag set, which exits 2.
+    cmd.append("--execute" if args.execute else "--leave-queued")
 
     proc = subprocess.run(cmd, capture_output=True, text=True)
     sys.stdout.write(proc.stdout)
