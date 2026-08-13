@@ -10,9 +10,10 @@ stimulir --version
 python3 --version   # >=3.10
 ```
 
-Both helpers (`create_eval_run.py`, `check_eval_run.py`) use only the Python
-standard library (`argparse`, `json`, `subprocess`, `shutil`, `sys`). There is
-nothing to `pip install` or `uv sync` for this skill to run. `pyproject.toml`
+All three helpers (`create_evaluator.py`, `create_eval_run.py`,
+`check_eval_run.py`) use only the Python standard library (`argparse`, `json`,
+`subprocess`, `shutil`, `sys`). There is nothing to `pip install` or `uv sync`
+for this skill to run. `pyproject.toml`
 declares the skill and its empty runtime dependency set, plus dev tooling
 (`pytest`, `ruff`) if you are editing the helpers themselves:
 
@@ -80,6 +81,7 @@ base as a fallback, and a second implementation would drift.
 cd ~/Developer/stimulir-skills/skills/eval-run
 
 # helpers import cleanly and show usage
+python3 helpers/create_evaluator.py --help
 python3 helpers/create_eval_run.py --help
 python3 helpers/check_eval_run.py --help
 
@@ -88,6 +90,8 @@ stimulir lab eval runs --limit 1
 stimulir lab eval create-run --help
 stimulir lab eval get --help
 stimulir lab eval tree --help
+stimulir lab eval evaluator-create --help
+stimulir lab eval evaluators --json
 ```
 
 `stimulir lab eval runs --limit 1` is the only real smoke test that costs

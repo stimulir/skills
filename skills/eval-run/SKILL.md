@@ -73,6 +73,54 @@ work, handled by a `capture-traces`-style skill. Before starting a run:
 Running against an unreviewed data asset is the single most common way this
 skill produces misleading results.
 
+## Invariant evaluators: enforce a guarantee before any spend
+
+Some guarantees must hold for a candidate to be worth judging at all: a
+forbidden phrase must never appear, a required phrase must always appear, a
+prompt must stay under a length cap. These are not scores. Scoring a candidate
+that violates one wastes judge tokens to grade something you would reject on
+sight.
+
+An invariant evaluator moves that check before the money. Mint one once, then
+attach it to a run:
+
+```bash
+python helpers/create_evaluator.py \
+  --name "no-internal-codenames" \
+  --forbidden-phrase "PROJECT_FALCON" \
+  --max-prompt-chars 8000
+
+python helpers/create_eval_run.py \
+  --name "summarize-ticket-v5" \
+  --data-asset-id <data-asset-id> \
+  --prompt summarize-ticket:5 \
+  --evaluator-id <evaluator-id> \
+  --execute
+```
+
+`create_evaluator.py` requires at least one of `--forbidden-phrase`,
+`--required-phrase` or `--max-prompt-chars`, and each repeats. It refuses an
+evaluator with none, because such an evaluator gates nothing. `--invariant-key`
+only labels the rejections a real invariant produces; it is not itself an
+invariant and does not satisfy that requirement.
+
+The guarantee, precisely. The invariant runs inside the executor, once per
+candidate, after the run is claimed and **before any inference or judging is
+paid for**. A prompt candidate that violates it is skipped: its results are
+marked `status=skipped`, the judge tag is `invariant_violation_v1`, and it
+costs nothing. A rejection is recorded in the ledger. That ledger is durable
+and survives run deletion, and it bars re-derivation: a later
+`stimulir lab eval derive` of that same identity (same content, key, provider,
+model and route, in the same measurement context) is refused with a 409
+`eval_derive_candidate_rejected` unless `--allow-rejected` is passed. Read the
+ledger with `stimulir lab eval rejections`. Non-prompt candidates pass the
+invariant vacuously; a baseline model or an adapter arm carries no prompt text
+to check.
+
+This gate is a different question from the `--execute`/`--leave-queued` guard
+below. That guard asks whether to spend at all. This gate decides which
+candidates are worth spending on, once you have chosen to spend.
+
 ## The detach contract
 
 `create-run` no longer blocks, and there is deliberately no `--wait` flag
@@ -113,7 +161,8 @@ python helpers/create_eval_run.py \
 `--prompt` takes `KEY`, `KEY:VERSION`, or `KEY:LABEL`, and repeats. Add
 `--provider` / `--model` to change the baseline (defaults `hybrie` and
 `hybrie-runtime-default`), or `--adapter-id` to add a hot-swap adapter as a
-second candidate.
+second candidate. Add `--evaluator-id` to gate every candidate against an
+invariant before spend (see the invariant-evaluator section above).
 
 **`--execute` is the normal path, not an opt-in extra.** `create-run` always
 sends `queue: true, execute: false` and then issues the start as its own
@@ -209,6 +258,73 @@ ahead right now, at any coverage. Eligibility says whether the measurement is
 finished and trustworthy enough to move a production label. Do not report the
 first as if it were the second.
 
+## Invariants: the admission gate
+
+**What this buys.** A score is an average over cases, and an average cannot
+see a requirement that is absolute. A prompt that drops a mandated disclaimer,
+leaks a banned instruction, or blows a context budget can still score well on
+every case in the set, because the cases were never written to catch it.
+Invariants name those requirements as content assertions and check them
+against the asset itself, so that class of failure is caught before any money
+is spent rather than argued about after a full run has been paid for.
+
+An evaluator contract may carry `definition["invariants"]`: a list of
+`{key, required_phrases?, forbidden_phrases?, max_prompt_chars?}` specs. Each
+spec is a content assertion over a candidate's unrendered prompt asset. Every
+`required_phrases` entry must appear, no `forbidden_phrases` entry may, and
+`max_prompt_chars` bounds the raw length. Phrase matching is case-insensitive
+substring, because invariants are authored as prose policy and a case
+mismatch between author and prompt is not a semantic difference.
+
+What the gate does: before the executor claims a batch, it checks every
+candidate that still has pending rows. A candidate whose prompt violates a
+spec is skipped **before any inference or judge spend**. Its pending rows
+flip to skipped with a zero score and a named reason, and a rejection is
+recorded in the ledger with reason `invariant_violation`. The verdict is a
+deterministic function of the prompt asset and the contract, so a re-entered
+run reproduces the same answer without duplicating the ledger row.
+
+Two boundaries keep the gate cheap and honest:
+
+- **Non-prompt candidates pass vacuously.** Managed inference, adapter
+  hot-swap and recorded-output arms carry no prompt asset to assert over, so
+  the v1 vocabulary has nothing to say about them. The same holds for a
+  prompt arm whose content cannot be resolved: a metadata gap is an
+  execution problem the run surfaces anyway, not a fabricated verdict.
+- **A run with no invariants pays zero extra queries.** The gate reads the
+  specs off the run's own record, finds none, and falls through before any
+  per-candidate work.
+
+The gate validates the asset a promotion would ship, not any one rendering
+of it. A required phrase carried in by a case's variables proves nothing
+about the asset, and a forbidden phrase inside a variable damns nothing.
+Runtime ceilings such as latency and cost are not invariants: they are
+promotion-time questions answered by measured results, and they live in
+`promotion_blockers`.
+
+## Champions: what a promotion pins
+
+Each measurement bucket can hold one champion: the incumbent candidate for
+that comparability key. The champion is pinned when a promotion is applied
+through a proposal. That apply records the winning arm's identity and its
+measured rollup (mean score, scored count, latency, cost, pass rate) on the
+champion row, together with a per-bucket `min_delta` stored on the row
+itself. `min_delta` is bucket policy: it survives later promotions, so an
+operator who raised a bucket's bar keeps it raised.
+
+A bare label move in `prompt-versioning` does NOT update the champion. The
+reason is evidence: the champion row records a measurement, and a label move
+carries none. No run, no arm, no scores. Only a proposal apply arrives
+holding the eval run, the winning arm and its results, so only that path can
+write a truthful champion row.
+
+Once a bucket has a champion, later completed runs are judged against it. An
+arm that finishes below the champion by more than `min_delta` is recorded in
+the rejection ledger as `score_regression`; one that lands inside the band
+is recorded as `insufficient_delta`. Those ledger rows are what the derive
+consult in `eval-iterate` reads. This skill only produces measurements. It
+never writes, moves, or displaces a champion.
+
 ## Steers: display them, never act on them
 
 A run carries a steer channel. Steers are **pulled, never pushed**: they ride
@@ -283,14 +399,23 @@ something that is a build away:
   with its own rank and alpha. It is not D2L, which is hypernetwork context
   internalisation and a different thing entirely.)
 
+A prompt derive can also 409 with `eval_derive_candidate_rejected` when the
+exact candidate was already rejected in that measurement context. That
+consult, and the `--allow-rejected` override, belong to `eval-iterate`. Do
+not act on either from here.
+
 ## CLI reference
 
 Helpers:
 
 ```bash
+python helpers/create_evaluator.py --name <name> \
+  ([--forbidden-phrase <text>]... | [--required-phrase <text>]... | --max-prompt-chars <n>) \
+  [--invariant-key <key>] [--description <text>] [--stimulir-bin <path>]
+
 python helpers/create_eval_run.py --name <name> \
   [--data-asset-id <id>] [--prompt <KEY[:VERSION|:LABEL]>]... \
-  [--provider <p>] [--model <m>] [--adapter-id <id>] \
+  [--provider <p>] [--model <m>] [--adapter-id <id>] [--evaluator-id <id>] \
   (--execute | --leave-queued) [--stimulir-bin <path>]
 
 python helpers/check_eval_run.py --run-id <id> [--stimulir-bin <path>]
@@ -299,17 +424,21 @@ python helpers/check_eval_run.py --run-id <id> [--stimulir-bin <path>]
 Underlying CLI surface, `stimulir lab eval`:
 
 ```bash
-create-run    --name --data-asset-id --prompt --provider --model --adapter-id --execute
-execute-run   <run-id>                 # start a run left DRAFT or QUEUED
-get           <run-id> [--json]        # one run: best arm, lineage, review, pending work
-runs          [--status] [--limit] [--include-archived]
-tree          <run-id> [--include-archived]   # lineage, buckets, best-per-kind, warnings
-steers        <run-id> [--pending]     # read-only for this skill
-delete        <run-id>... [--hard] [--include-descendants]
+evaluator-create  --name (--forbidden-phrase | --required-phrase | --max-prompt-chars) [--invariant-key]
+evaluators        [--include-archived]        # list evaluators, with their invariant count
+create-run        --name --data-asset-id --prompt --provider --model --adapter-id --evaluator-id --execute
+execute-run       <run-id>                 # start a run left DRAFT or QUEUED
+get               <run-id> [--json]        # one run: best arm, lineage, review, pending work
+runs              [--status] [--limit] [--include-archived]
+tree              <run-id> [--include-archived]   # lineage, buckets, best-per-kind, warnings
+steers            <run-id> [--pending]     # read-only for this skill
+rejections        [--comparability-key] [--identity-hash] [--run]   # the ledger a derive consults
+delete            <run-id>... [--hard] [--include-descendants]
 ```
 
 Not this skill's, listed so they are recognisable rather than reinvented:
-`derive`, `steer`, `ack-steer`.
+`derive`, `steer`, `ack-steer`, `proposals`, `promote`. Promotion lives in
+`eval-promote`; branching lives in `eval-iterate`.
 
 REST equivalents, for reference. This skill does not call REST directly:
 

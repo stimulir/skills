@@ -27,6 +27,14 @@ pending results, which makes the parent a partial measurement forever AND
 adds run_stopped to its promotion blockers. That is an operator decision, not
 an iteration step. It remains on the CLI.
 
+--allow-rejected IS exposed, and it is the one flag here that belongs to a
+human. The API refuses a candidate identity the rejection ledger already holds
+a verdict on, with a 409 naming the reason and the date. Without the flag on
+this helper a ledger 409 would dead-end the skill lane, leaving the agent no
+sanctioned way to act on a human's decision to re-measure. It is forwarded
+only when set, exactly like --execute/--leave-queued in eval-run's helper, so
+an ordinary derive sends nothing and keeps the consult in force.
+
 THE RATIONALE IS THE PRODUCT. A branch with no stated hypothesis is a rerun
 with extra steps, and the rationale column is what lets the next iteration
 read what this lineage has already disproved instead of proposing it again.
@@ -176,6 +184,12 @@ def main() -> None:
              "re-measurement, and say so in the rationale itself",
     )
     parser.add_argument(
+        "--allow-rejected", action="store_true",
+        help="override the rejection ledger and re-derive a candidate identity it "
+             "already holds a verdict on. A HUMAN decision: surface the 409's reason "
+             "and date, ask, and only then pass this. Never pass it silently",
+    )
+    parser.add_argument(
         "--stimulir-bin", default="stimulir",
         help="path to the stimulir CLI binary (default: 'stimulir' on PATH)",
     )
@@ -230,6 +244,14 @@ def main() -> None:
         cmd += ["--source-candidate-key", args.source_candidate_key]
     if args.instruction:
         cmd += ["--instruction", args.instruction]
+    # Forwarded ONLY when true. The CLI declares it as a plain `--allow-rejected`
+    # bool with no `--no-` counterpart, so there is nothing to send in the false
+    # case, and sending the flag unconditionally would disable the ledger consult
+    # on every ordinary derive. Same forward-when-set posture as eval-run's
+    # helper, which appends exactly one of --execute/--leave-queued because the
+    # CLI there requires one of the pair.
+    if args.allow_rejected:
+        cmd.append("--allow-rejected")
     for flag, value in (("--max-cases", args.max_cases), ("--max-candidates", args.max_candidates)):
         if value is not None:
             cmd += [flag, str(value)]
@@ -274,7 +296,15 @@ def main() -> None:
             f"Child left DRAFT. Start it with `stimulir lab eval execute-run {child_id}`. "
             "It counts against the tree's open-branch cap until it does."
         )
+    if args.allow_rejected:
+        out["allow_rejected"] = True
     print(json.dumps(out, indent=2, default=str))
+    if args.allow_rejected:
+        sys.stderr.write(
+            f"{HELPER}: --allow-rejected was passed. The rejection ledger's verdict on "
+            "this candidate identity was overridden and the lineage is paying to "
+            "re-measure it. Report this to the human who ordered it.\n"
+        )
     if out["replayed"]:
         sys.stderr.write(
             f"{HELPER}: replayed under an existing idempotency key. Nothing new was "

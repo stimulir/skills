@@ -54,12 +54,16 @@ never acted on. See [`install.md`](./install.md) for setup.
 ## Architecture
 
 ```
-create_eval_run.py  → stimulir lab eval create-run --execute  → run id + status + console link
-check_eval_run.py   → stimulir lab eval get <id> --json       → one flat status read
+create_evaluator.py → stimulir lab eval evaluator-create        → evaluator id (invariant gate)
+create_eval_run.py  → stimulir lab eval create-run --execute    → run id + status + console link
+check_eval_run.py   → stimulir lab eval get <id> --json         → one flat status read
 ```
 
-Two independent scripts, no shared state, no server, no background process.
-Each wraps exactly one CLI invocation.
+Three independent scripts, no shared state, no server, no background process.
+Each wraps exactly one CLI invocation. `create_evaluator.py` mints an invariant
+evaluator that `create_eval_run.py --evaluator-id` attaches, so a violating
+prompt candidate is skipped before any judge spend and barred from
+re-derivation.
 
 `create_eval_run.py` adds one guard the CLI lacks: it will not create a run
 unless the caller says explicitly whether it should start. It passes the CLI's

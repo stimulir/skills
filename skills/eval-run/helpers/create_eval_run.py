@@ -53,6 +53,12 @@ def main():
         help="adapter id to add as a hot-swap candidate alongside the baseline",
     )
     parser.add_argument(
+        "--evaluator-id", default=None,
+        help="attach an evaluator (see create_evaluator.py). Its invariants gate every "
+             "candidate BEFORE any inference or judging is paid for: a violating prompt "
+             "candidate is skipped and recorded as a rejection.",
+    )
+    parser.add_argument(
         "--execute", action="store_true",
         help="queue the run AND spawn its executor. Returns immediately; it does not wait.",
     )
@@ -104,6 +110,8 @@ def main():
         cmd += ["--model", args.model]
     if args.adapter_id:
         cmd += ["--adapter-id", args.adapter_id]
+    if args.evaluator_id:
+        cmd += ["--evaluator-id", args.evaluator_id]
     # Forward BOTH, not just --execute. The CLI now requires exactly one of them
     # for the same reason this helper does, so forwarding only --execute made
     # --leave-queued reach `create-run` with neither flag set, which exits 2.

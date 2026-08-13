@@ -215,6 +215,58 @@ id plus the normalised rationale. A re-invoked iteration that crashed
 mid-flight returns the first child and spends nothing. A genuinely new
 hypothesis digests differently and produces a new child.
 
+**The derive consults the rejection ledger.** Every candidate carries an
+identity hash: what it says (prompt key, normalised content, provider,
+model, route), not which mint of it. Prompt version, id and candidate key
+are excluded on purpose, so re-pushing byte-identical content as a new
+version does not evade the ledger. If this exact identity was already
+rejected in the same measurement context, the API refuses with a 409,
+`eval_derive_candidate_rejected`, naming the reason and the date it was
+rejected. That refusal is a consult answer, not a breakage: the lineage
+already paid for this verdict, and re-deriving would spend two full arms
+buying it again.
+
+`--allow-rejected` overrides the consult, and the override belongs to the
+human. Surface the 409 verbatim, with its reason and date, and derive again
+only when the human says the re-measurement is deliberate. Never pass it
+silently, and never pass it just because the 409 was in the way. The helper
+carries the flag, forwarded only when set, so that a human's decision to
+re-measure has a sanctioned path through this lane instead of a dead end. It
+prints `allow_rejected` on the output and warns on stderr, because an
+overridden verdict must be visible to whoever reads the run afterwards.
+
+Three reasons appear in the ledger, from two producers:
+
+- `invariant_violation`: the admission gate skipped the candidate before any
+  judge spend, because its prompt violated the evaluator's
+  `definition["invariants"]` specs (`{key, required_phrases?,
+  forbidden_phrases?, max_prompt_chars?}`). Non-prompt candidates pass the
+  gate vacuously, and a run with no invariants pays zero extra queries for
+  it. `eval-run` documents the gate in full.
+- `score_regression`: the arm completed below the bucket's champion by more
+  than the champion row's `min_delta`.
+- `insufficient_delta`: the arm completed inside the band. Not worse by
+  `min_delta`, not better by `min_delta` either.
+
+**The champion is what those last two are measured against.** Each
+measurement bucket holds at most one champion: the incumbent for that
+comparability key. It is pinned when a promotion is applied through a
+proposal. That apply is the only path carrying what a champion row records:
+the winning arm's identity and its measured rollup. `min_delta`
+lives on the row as per-bucket policy and survives later promotions, so a bar
+an operator raised stays raised.
+
+A bare label move in `prompt-versioning` does NOT update the champion. It
+carries no run, no arm and no scores, so there is nothing truthful to write.
+Two consequences for this skill. A lineage can sit behind a champion that a
+label move has already superseded in production, which is a reason to read
+the bucket rather than assume the label and the champion agree. And moving a
+label after a good score does not close the loop: the ledger keeps judging
+against the old incumbent until a proposal apply pins the new one.
+
+This skill never writes, moves or displaces a champion. It derives one
+candidate and hands back the run id.
+
 ### 5. Hand back, and ack any steer you acted on
 
 The output is the detach contract: child run id, status, and a console link
@@ -265,6 +317,15 @@ fixing them, which is safe because the idempotency key is stable. Ending an
 invocation on an expired token, and reporting it as a budget stop, would be
 this skill's own worst failure mode.
 
+One `eval_derive_` refusal differs from the caps: it is a consult, not a cap.
+`eval_derive_candidate_rejected` (HTTP 409) means the ledger already holds a
+verdict on this exact candidate, and it arrives with the reason and the date.
+The correct output is still a report: quote it, name the producing run, and end
+the invocation. The difference is what comes next. The caps above have no
+override, so their refusal is a hard stop; this one has `--allow-rejected`, and
+only a human may order it. Surface it, do not act on it. See "When you cannot
+iterate this turn" below.
+
 The open-branch cap is advisory server-side too: it is a tree-scoped
 check-then-act under a parent-row lock, so concurrent derives from different
 leaves can overshoot it. Treat it as a bound on ordinary use, not an
@@ -290,7 +351,7 @@ trustworthy enough to move a production label: full case coverage, at least
 
 ## When you cannot iterate this turn, say so and stop
 
-Three real cases. In all of them the correct output is a report, not a forced
+Four real cases. In all of them the correct output is a report, not a forced
 derive.
 
 - **`requested_bucket` is null.** The run carries no comparability key. It
@@ -303,6 +364,19 @@ derive.
   `eval_derive_no_scored_source`. There is no measurement to branch from.
   Let the parent score at least one case first.
 - **A cap is reached.** See above. The refusal is the answer.
+- **This candidate was already rejected.** The derive is refused with HTTP 409
+  `eval_derive_candidate_rejected` when the exact candidate identity (same
+  content, key, provider, model and route, in this measurement context) is in
+  the rejection ledger. An invariant evaluator on an earlier run put it there:
+  it skipped the candidate before any judge spend and recorded the rejection
+  (see `eval-run`'s invariant-evaluator section). The refusal names the reason,
+  the date and the run. **This one has a documented override, and it is the
+  human's call.** `stimulir lab eval derive ... --allow-rejected` branches the
+  identity anyway. The helper does not expose the flag, on purpose, for the
+  same reason it does not expose `--stop-parent`: an override of a recorded
+  rejection is a deliberate operator decision, not an iteration step. Surface
+  the 409 and its reason to the human, and let them run the raw CLI with
+  `--allow-rejected` if they mean to overrule the ledger. Never add it silently.
 
 ## What does not work, stated plainly
 
@@ -356,7 +430,12 @@ python3 helpers/derive_candidate.py <parent-run-id> --rationale "<hypothesis>" \
   (--prompt-file <path> | --prompt-ref <KEY[:VERSION|:LABEL]>) \
   [--source-candidate-key <key>] [--instruction "<steer body>"] \
   [--no-start] [--max-cases N] [--max-candidates N] \
-  [--allow-repeat-rationale] [--idempotency-key <key>] [--stimulir-bin <path>]
+  [--allow-repeat-rationale] [--allow-rejected] \
+  [--idempotency-key <key>] [--stimulir-bin <path>]
+
+# override a recorded rejection: RAW CLI only, and a human's call (see below)
+stimulir lab eval derive <parent-run-id> --rationale "<hypothesis>" \
+  (--prompt-file <path> | --prompt-ref <ref>) --allow-rejected --json
 
 # record that a steer was consumed, after acting on it
 python3 helpers/ack_steer.py <run-id> <steer-id> --consumed-by <session-id> --note "<what was done>"
@@ -402,6 +481,8 @@ POST /api/v1/lab/evals/runs/{id}/steers/{steer_id}/ack
 - `derive_candidate.py` prints `handoff` (child run id, status, console URL
   or the env var to set), `replayed`, the echoed `rationale`, `lineage`,
   `incumbent_arm`, `projected`, `parent`, and the full `raw` derive response.
+  It adds `allow_rejected: true`, plus a stderr warning, when the ledger
+  consult was overridden.
 - `ack_steer.py` prints the steer id, `already_consumed`, the consumption
   record and a `handoff`. When `already_consumed` is true, the consumption on
   record belongs to whoever got there first and your ack changed nothing.
@@ -450,6 +531,20 @@ POST /api/v1/lab/evals/runs/{id}/steers/{steer_id}/ack
 - **Passing `--kind adapter_hot_swap` or `adapter_warm_start` via the raw
   CLI expecting it to work.** Both are refused, for different reasons. Read
   the code before deciding what to tell the user.
+- **Passing `--allow-rejected` to clear a 409.** The refusal is the answer:
+  the ledger already holds a verdict on this exact candidate. Report the
+  reason, the date and the producing run, and derive again only when a human
+  orders the re-measurement. Overriding it to keep the invocation moving
+  spends two full arms re-buying something already known.
+- **Moving a prompt label and calling the champion updated.** A label move
+  carries no evidence and writes no champion row. Only a proposal apply pins
+  an incumbent.
 - **Freeing an open-branch slot by archiving.** Archive is one-way, there is
   no un-archive endpoint, and doing it to get past a spend cap converts a
   budget refusal into permanent data loss. Ask a human.
+- **Passing `--allow-rejected` to work around a 409
+  `eval_derive_candidate_rejected`.** The identity is in the rejection ledger
+  because an invariant already skipped it before spend. Overriding that is a
+  deliberate operator decision, so the helper does not expose the flag. Surface
+  the refusal and its reason to the human and let them run the raw CLI with
+  `--allow-rejected` if they mean to. Never add it silently.
