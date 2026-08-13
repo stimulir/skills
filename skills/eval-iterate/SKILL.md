@@ -265,6 +265,12 @@ fixing them, which is safe because the idempotency key is stable. Ending an
 invocation on an expired token, and reporting it as a budget stop, would be
 this skill's own worst failure mode.
 
+One `eval_derive_` refusal differs from the caps: `eval_derive_candidate_rejected`
+(HTTP 409) has a documented override. The caps above have none, so their refusal
+is a hard stop. The rejection refusal is a stop for this skill's helper, but a
+human may overrule the ledger with a raw `--allow-rejected` derive. Surface it,
+do not act on it. See "When you cannot iterate this turn" below.
+
 The open-branch cap is advisory server-side too: it is a tree-scoped
 check-then-act under a parent-row lock, so concurrent derives from different
 leaves can overshoot it. Treat it as a bound on ordinary use, not an
@@ -290,7 +296,7 @@ trustworthy enough to move a production label: full case coverage, at least
 
 ## When you cannot iterate this turn, say so and stop
 
-Three real cases. In all of them the correct output is a report, not a forced
+Four real cases. In all of them the correct output is a report, not a forced
 derive.
 
 - **`requested_bucket` is null.** The run carries no comparability key. It
@@ -303,6 +309,19 @@ derive.
   `eval_derive_no_scored_source`. There is no measurement to branch from.
   Let the parent score at least one case first.
 - **A cap is reached.** See above. The refusal is the answer.
+- **This candidate was already rejected.** The derive is refused with HTTP 409
+  `eval_derive_candidate_rejected` when the exact candidate identity (same
+  content, key, provider, model and route, in this measurement context) is in
+  the rejection ledger. An invariant evaluator on an earlier run put it there:
+  it skipped the candidate before any judge spend and recorded the rejection
+  (see `eval-run`'s invariant-evaluator section). The refusal names the reason,
+  the date and the run. **This one has a documented override, and it is the
+  human's call.** `stimulir lab eval derive ... --allow-rejected` branches the
+  identity anyway. The helper does not expose the flag, on purpose, for the
+  same reason it does not expose `--stop-parent`: an override of a recorded
+  rejection is a deliberate operator decision, not an iteration step. Surface
+  the 409 and its reason to the human, and let them run the raw CLI with
+  `--allow-rejected` if they mean to overrule the ledger. Never add it silently.
 
 ## What does not work, stated plainly
 
@@ -357,6 +376,10 @@ python3 helpers/derive_candidate.py <parent-run-id> --rationale "<hypothesis>" \
   [--source-candidate-key <key>] [--instruction "<steer body>"] \
   [--no-start] [--max-cases N] [--max-candidates N] \
   [--allow-repeat-rationale] [--idempotency-key <key>] [--stimulir-bin <path>]
+
+# override a recorded rejection: RAW CLI only, and a human's call (see below)
+stimulir lab eval derive <parent-run-id> --rationale "<hypothesis>" \
+  (--prompt-file <path> | --prompt-ref <ref>) --allow-rejected --json
 
 # record that a steer was consumed, after acting on it
 python3 helpers/ack_steer.py <run-id> <steer-id> --consumed-by <session-id> --note "<what was done>"
@@ -453,3 +476,9 @@ POST /api/v1/lab/evals/runs/{id}/steers/{steer_id}/ack
 - **Freeing an open-branch slot by archiving.** Archive is one-way, there is
   no un-archive endpoint, and doing it to get past a spend cap converts a
   budget refusal into permanent data loss. Ask a human.
+- **Passing `--allow-rejected` to work around a 409
+  `eval_derive_candidate_rejected`.** The identity is in the rejection ledger
+  because an invariant already skipped it before spend. Overriding that is a
+  deliberate operator decision, so the helper does not expose the flag. Surface
+  the refusal and its reason to the human and let them run the raw CLI with
+  `--allow-rejected` if they mean to. Never add it silently.

@@ -73,6 +73,54 @@ work, handled by a `capture-traces`-style skill. Before starting a run:
 Running against an unreviewed data asset is the single most common way this
 skill produces misleading results.
 
+## Invariant evaluators: enforce a guarantee before any spend
+
+Some guarantees must hold for a candidate to be worth judging at all: a
+forbidden phrase must never appear, a required phrase must always appear, a
+prompt must stay under a length cap. These are not scores. Scoring a candidate
+that violates one wastes judge tokens to grade something you would reject on
+sight.
+
+An invariant evaluator moves that check before the money. Mint one once, then
+attach it to a run:
+
+```bash
+python helpers/create_evaluator.py \
+  --name "no-internal-codenames" \
+  --forbidden-phrase "PROJECT_FALCON" \
+  --max-prompt-chars 8000
+
+python helpers/create_eval_run.py \
+  --name "summarize-ticket-v5" \
+  --data-asset-id <data-asset-id> \
+  --prompt summarize-ticket:5 \
+  --evaluator-id <evaluator-id> \
+  --execute
+```
+
+`create_evaluator.py` requires at least one of `--forbidden-phrase`,
+`--required-phrase` or `--max-prompt-chars`, and each repeats. It refuses an
+evaluator with none, because such an evaluator gates nothing. `--invariant-key`
+only labels the rejections a real invariant produces; it is not itself an
+invariant and does not satisfy that requirement.
+
+The guarantee, precisely. The invariant runs inside the executor, once per
+candidate, after the run is claimed and **before any inference or judging is
+paid for**. A prompt candidate that violates it is skipped: its results are
+marked `status=skipped`, the judge tag is `invariant_violation_v1`, and it
+costs nothing. A rejection is recorded in the ledger. That ledger is durable
+and survives run deletion, and it bars re-derivation: a later
+`stimulir lab eval derive` of that same identity (same content, key, provider,
+model and route, in the same measurement context) is refused with a 409
+`eval_derive_candidate_rejected` unless `--allow-rejected` is passed. Read the
+ledger with `stimulir lab eval rejections`. Non-prompt candidates pass the
+invariant vacuously; a baseline model or an adapter arm carries no prompt text
+to check.
+
+This gate is a different question from the `--execute`/`--leave-queued` guard
+below. That guard asks whether to spend at all. This gate decides which
+candidates are worth spending on, once you have chosen to spend.
+
 ## The detach contract
 
 `create-run` no longer blocks, and there is deliberately no `--wait` flag
@@ -113,7 +161,8 @@ python helpers/create_eval_run.py \
 `--prompt` takes `KEY`, `KEY:VERSION`, or `KEY:LABEL`, and repeats. Add
 `--provider` / `--model` to change the baseline (defaults `hybrie` and
 `hybrie-runtime-default`), or `--adapter-id` to add a hot-swap adapter as a
-second candidate.
+second candidate. Add `--evaluator-id` to gate every candidate against an
+invariant before spend (see the invariant-evaluator section above).
 
 **`--execute` is the normal path, not an opt-in extra.** `create-run` always
 sends `queue: true, execute: false` and then issues the start as its own
@@ -288,9 +337,13 @@ something that is a build away:
 Helpers:
 
 ```bash
+python helpers/create_evaluator.py --name <name> \
+  ([--forbidden-phrase <text>]... | [--required-phrase <text>]... | --max-prompt-chars <n>) \
+  [--invariant-key <key>] [--description <text>] [--stimulir-bin <path>]
+
 python helpers/create_eval_run.py --name <name> \
   [--data-asset-id <id>] [--prompt <KEY[:VERSION|:LABEL]>]... \
-  [--provider <p>] [--model <m>] [--adapter-id <id>] \
+  [--provider <p>] [--model <m>] [--adapter-id <id>] [--evaluator-id <id>] \
   (--execute | --leave-queued) [--stimulir-bin <path>]
 
 python helpers/check_eval_run.py --run-id <id> [--stimulir-bin <path>]
@@ -299,17 +352,21 @@ python helpers/check_eval_run.py --run-id <id> [--stimulir-bin <path>]
 Underlying CLI surface, `stimulir lab eval`:
 
 ```bash
-create-run    --name --data-asset-id --prompt --provider --model --adapter-id --execute
-execute-run   <run-id>                 # start a run left DRAFT or QUEUED
-get           <run-id> [--json]        # one run: best arm, lineage, review, pending work
-runs          [--status] [--limit] [--include-archived]
-tree          <run-id> [--include-archived]   # lineage, buckets, best-per-kind, warnings
-steers        <run-id> [--pending]     # read-only for this skill
-delete        <run-id>... [--hard] [--include-descendants]
+evaluator-create  --name (--forbidden-phrase | --required-phrase | --max-prompt-chars) [--invariant-key]
+evaluators        [--include-archived]        # list evaluators, with their invariant count
+create-run        --name --data-asset-id --prompt --provider --model --adapter-id --evaluator-id --execute
+execute-run       <run-id>                 # start a run left DRAFT or QUEUED
+get               <run-id> [--json]        # one run: best arm, lineage, review, pending work
+runs              [--status] [--limit] [--include-archived]
+tree              <run-id> [--include-archived]   # lineage, buckets, best-per-kind, warnings
+steers            <run-id> [--pending]     # read-only for this skill
+rejections        [--comparability-key] [--identity-hash] [--run]   # the ledger a derive consults
+delete            <run-id>... [--hard] [--include-descendants]
 ```
 
 Not this skill's, listed so they are recognisable rather than reinvented:
-`derive`, `steer`, `ack-steer`.
+`derive`, `steer`, `ack-steer`, `proposals`, `promote`. Promotion lives in
+`eval-promote`; branching lives in `eval-iterate`.
 
 REST equivalents, for reference. This skill does not call REST directly:
 

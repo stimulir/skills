@@ -1,0 +1,12 @@
+[project]
+name = "eval-promote"
+version = "0.1.0"
+description = "Review a completed eval run's promotion proposals and apply exactly one, with the human authorising it. Reads proposals and renders the exact label move; the promote itself is a bare CLI call the human runs so they answer its confirmation. One proposal per invocation, never passes --yes, never scores or branches. Thin CLI wrapper around 'stimulir lab eval proposals/promote/champions'. Stdlib only, no direct REST/SDK auth."
+requires-python = ">=3.10"
+dependencies = []
+
+[tool.uv]
+dev-dependencies = [
+    "pytest>=8.0",
+    "ruff>=0.5",
+]

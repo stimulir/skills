@@ -25,6 +25,7 @@ onto the gateway, then turn the feedback loop on.
 | 3. Close the loop | [`prompt-versioning`](./skills/prompt-versioning/) | Version and label prompts instead of hardcoding strings; promote through environments deliberately. |
 | 3. Close the loop | [`eval-run`](./skills/eval-run/) | Compare a prompt or model change against a curated dataset before promoting to prod. |
 | 3. Close the loop | [`eval-iterate`](./skills/eval-iterate/) | Advance an existing eval lineage by one branch: read the tree and its prior hypotheses, derive one new prompt candidate, hand back the child run id. One iteration per invocation. |
+| 3. Close the loop | [`eval-promote`](./skills/eval-promote/) | Review a completed run's promotion proposals and apply exactly one, with the human authorising it: the label moves live and the champion is pinned. Never confirms on the human's behalf. One proposal per invocation. |
 | Ongoing | [`usage-audit`](./skills/usage-audit/) | Cost-per-task visibility. Runs alongside every other stage, not sequential. |
 
 Everything past Stage 0 assumes `connect` has already run: the CLI is
@@ -58,7 +59,7 @@ frontmatter as `metadata.category`.
 
 | Category | Runtime contract | Count |
 |---|---|---|
-| `operator` | Needs the `stimulir` CLI and a `~/.stimulir` session on the caller's machine. Shells out to the CLI rather than reimplementing REST auth. No vault injection. | 9 |
+| `operator` | Needs the `stimulir` CLI and a `~/.stimulir` session on the caller's machine. Shells out to the CLI rather than reimplementing REST auth. No vault injection. | 10 |
 | `managed` | Runs inside the Stimulir sandbox with the workspace vault injected into its environment. No CLI session. Hard-bounded at four agent turns by the sandbox runner, so anything long has to be resumable a step at a time. | 4 |
 | `loop` | Carries state across invocations against a console-side run row, champion pointer and iteration budget. Exactly one iteration per invocation. | 1 |
 
@@ -122,10 +123,11 @@ frontmatter field can come back then, meaning something.
 npx skills add stimulir/skills
 ```
 
-Seven of the fourteen skills are standard-library only. Their helpers shell
+Eight of the fifteen skills are standard-library only. Their helpers shell
 out to the `stimulir` CLI rather than reimplementing REST auth, so there is no
 `uv sync` to run for `connect`, `migrate-inference`, `byok-register`,
-`capture-traces`, `prompt-versioning`, `eval-run`, or `eval-iterate`.
+`capture-traces`, `prompt-versioning`, `eval-run`, `eval-iterate`, or
+`eval-promote`.
 
 The rest call an API directly and need dependencies:
 
@@ -156,7 +158,7 @@ Then point your host at the skill directories you want:
 
 ```bash
 for s in connect migrate-inference byok-register voice-modalities capture-traces \
-         privacy-layer prompt-versioning eval-run eval-iterate usage-audit \
+         privacy-layer prompt-versioning eval-run eval-iterate eval-promote usage-audit \
          web-scrape deep-research opposition-enrich scenario-simulate; do
   ln -s ~/Developer/stimulir-skills/skills/$s ~/.claude/skills/$s
 done
@@ -201,6 +203,7 @@ stimulir-skills/
     ├── prompt-versioning/
     ├── eval-run/
     ├── eval-iterate/
+    ├── eval-promote/
     ├── usage-audit/
     ├── web-scrape/
     ├── deep-research/
