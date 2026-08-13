@@ -258,6 +258,73 @@ ahead right now, at any coverage. Eligibility says whether the measurement is
 finished and trustworthy enough to move a production label. Do not report the
 first as if it were the second.
 
+## Invariants: the admission gate
+
+**What this buys.** A score is an average over cases, and an average cannot
+see a requirement that is absolute. A prompt that drops a mandated disclaimer,
+leaks a banned instruction, or blows a context budget can still score well on
+every case in the set, because the cases were never written to catch it.
+Invariants name those requirements as content assertions and check them
+against the asset itself, so that class of failure is caught before any money
+is spent rather than argued about after a full run has been paid for.
+
+An evaluator contract may carry `definition["invariants"]`: a list of
+`{key, required_phrases?, forbidden_phrases?, max_prompt_chars?}` specs. Each
+spec is a content assertion over a candidate's unrendered prompt asset. Every
+`required_phrases` entry must appear, no `forbidden_phrases` entry may, and
+`max_prompt_chars` bounds the raw length. Phrase matching is case-insensitive
+substring, because invariants are authored as prose policy and a case
+mismatch between author and prompt is not a semantic difference.
+
+What the gate does: before the executor claims a batch, it checks every
+candidate that still has pending rows. A candidate whose prompt violates a
+spec is skipped **before any inference or judge spend**. Its pending rows
+flip to skipped with a zero score and a named reason, and a rejection is
+recorded in the ledger with reason `invariant_violation`. The verdict is a
+deterministic function of the prompt asset and the contract, so a re-entered
+run reproduces the same answer without duplicating the ledger row.
+
+Two boundaries keep the gate cheap and honest:
+
+- **Non-prompt candidates pass vacuously.** Managed inference, adapter
+  hot-swap and recorded-output arms carry no prompt asset to assert over, so
+  the v1 vocabulary has nothing to say about them. The same holds for a
+  prompt arm whose content cannot be resolved: a metadata gap is an
+  execution problem the run surfaces anyway, not a fabricated verdict.
+- **A run with no invariants pays zero extra queries.** The gate reads the
+  specs off the run's own record, finds none, and falls through before any
+  per-candidate work.
+
+The gate validates the asset a promotion would ship, not any one rendering
+of it. A required phrase carried in by a case's variables proves nothing
+about the asset, and a forbidden phrase inside a variable damns nothing.
+Runtime ceilings such as latency and cost are not invariants: they are
+promotion-time questions answered by measured results, and they live in
+`promotion_blockers`.
+
+## Champions: what a promotion pins
+
+Each measurement bucket can hold one champion: the incumbent candidate for
+that comparability key. The champion is pinned when a promotion is applied
+through a proposal. That apply records the winning arm's identity and its
+measured rollup (mean score, scored count, latency, cost, pass rate) on the
+champion row, together with a per-bucket `min_delta` stored on the row
+itself. `min_delta` is bucket policy: it survives later promotions, so an
+operator who raised a bucket's bar keeps it raised.
+
+A bare label move in `prompt-versioning` does NOT update the champion. The
+reason is evidence: the champion row records a measurement, and a label move
+carries none. No run, no arm, no scores. Only a proposal apply arrives
+holding the eval run, the winning arm and its results, so only that path can
+write a truthful champion row.
+
+Once a bucket has a champion, later completed runs are judged against it. An
+arm that finishes below the champion by more than `min_delta` is recorded in
+the rejection ledger as `score_regression`; one that lands inside the band
+is recorded as `insufficient_delta`. Those ledger rows are what the derive
+consult in `eval-iterate` reads. This skill only produces measurements. It
+never writes, moves, or displaces a champion.
+
 ## Steers: display them, never act on them
 
 A run carries a steer channel. Steers are **pulled, never pushed**: they ride
@@ -331,6 +398,11 @@ something that is a build away:
   Train out of band, then hot-swap the result. (This is the PEFT LoRA route,
   with its own rank and alpha. It is not D2L, which is hypernetwork context
   internalisation and a different thing entirely.)
+
+A prompt derive can also 409 with `eval_derive_candidate_rejected` when the
+exact candidate was already rejected in that measurement context. That
+consult, and the `--allow-rejected` override, belong to `eval-iterate`. Do
+not act on either from here.
 
 ## CLI reference
 
