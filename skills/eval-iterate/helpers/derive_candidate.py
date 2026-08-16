@@ -282,7 +282,9 @@ def main() -> None:
     child = result.get("run") if isinstance(result.get("run"), dict) else {}
     child_id = str(child.get("id") or "")
     out = {
-        "handoff": handoff(child_id or "unknown", child.get("status")),
+        # The human handoff is the RSI surface, not the generic run summary:
+        # lineage, promotion gate, derive and steers are composed there.
+        "handoff": handoff(child_id or "unknown", child.get("status"), view="tree"),
         "replayed": bool(result.get("replayed")),
         "rationale": rationale,
         "lineage": result.get("lineage"),

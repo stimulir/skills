@@ -270,13 +270,21 @@ candidate and hands back the run id.
 ### 5. Hand back, and ack any steer you acted on
 
 The output is the detach contract: child run id, status, and a console link
-at `{console_base}/workspaces/lab/evaluate?run=<child-id>`. When the console
+at `{console_base}/workspaces/lab/evaluate?run=<child-id>&view=tree`. That
+link opens the RSI workbench directly, where the human can inspect lineage,
+the promotion gate, derive controls and steers. When the console
 base cannot be resolved, the helper names `STIMULIR_CONSOLE_BASE` instead of
 guessing a host, because a link that 404s on a run that exists is worse than
 no link.
 
 There is no "now poll with" line, by design. Report the child id and the
 link, then end the invocation.
+
+The workbench's promotion gate is the human handoff, not permission for this
+skill to promote. Report its state exactly: a blocked leader stays provisional
+and its named blockers are the next diagnostic; an eligible prompt winner may
+show `Promote version`, and managed inference may show `Review routing change`.
+Closing that gate is a separate `eval-promote` invocation.
 
 If this iteration was prompted by a steer, ack it now, after acting:
 

@@ -80,7 +80,8 @@ placement rationale for why this skill does not reimplement
 ## 4. Console deep links (optional, one line)
 
 The helpers print a link to the child run at
-`{console_base}/workspaces/lab/evaluate?run=<id>`. The base is resolved from
+`{console_base}/workspaces/lab/evaluate?run=<id>&view=tree`, opening the RSI
+workbench directly. The base is resolved from
 `STIMULIR_CONSOLE_BASE`, then `console_base` in `~/.stimulir/config.json`:
 
 ```bash

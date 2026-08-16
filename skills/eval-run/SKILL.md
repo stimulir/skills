@@ -133,12 +133,14 @@ What the CLI prints when a run starts is the whole handoff:
 ```
 Eval run created: 6f2c...
 Run: 6f2c...  status: queued
-Console: https://console.stimulir.com/workspaces/lab/evaluate?run=6f2c...
+Console: https://console.stimulir.com/workspaces/lab/evaluate?run=6f2c...&view=tree
 ```
 
 The run id, the status, and a link a human can open. There is no "now poll
 with ..." line, on purpose. Hand the link to the user and end the turn. Come
 back and read the status once when the user asks, or on a later invocation.
+The link should open the RSI workbench: it is the shared human/agent surface
+for run diagnostics, lineage, steers, and the structured promotion gate.
 
 If the link is missing, the console origin could not be resolved. Set
 `STIMULIR_CONSOLE_BASE`, or `console_base` in `~/.stimulir/config.json`. The
