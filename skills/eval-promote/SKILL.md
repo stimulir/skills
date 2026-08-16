@@ -89,6 +89,13 @@ The MCP server exposes no lab tools. Shelling out to the CLI is the only path.
 4. champions                          confirm the pin landed
 ```
 
+When proposal evidence carries `eval_run_id`, also hand back the run's RSI
+workbench link: `{console_base}/workspaces/lab/evaluate?run=<eval-run-id>&view=tree`.
+The workbench is the evidence review surface. Its promotion gate must agree
+with the structured run contract: do not offer or recommend the CLI promote
+command while `eligible_for_promotion` is false or `promotion_blockers` is
+non-empty. The CLI confirmation remains the final human authorisation.
+
 ### 1. See what completed runs recommend
 
 ```bash
