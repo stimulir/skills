@@ -1,0 +1,7 @@
+interface:
+  display_name: "RSI"
+  short_description: "Diagnose and hill-climb AI behavior"
+  default_prompt: "Use $rsi to run diagnostic RSI on this project using today's production traces without promoting changes."
+
+policy:
+  allow_implicit_invocation: true
