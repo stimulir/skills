@@ -26,6 +26,7 @@ onto the gateway, then turn the feedback loop on.
 | 3. Close the loop | [`eval-run`](./skills/eval-run/) | Compare a prompt or model change against a curated dataset before promoting to prod. |
 | 3. Close the loop | [`eval-iterate`](./skills/eval-iterate/) | Advance an existing eval lineage by one branch: read the tree and its prior hypotheses, derive one new prompt candidate, hand back the child run id. One iteration per invocation. |
 | 3. Close the loop | [`eval-promote`](./skills/eval-promote/) | Review a completed run's promotion proposals and apply exactly one, with the human authorising it: the label moves live and the champion is pinned. Never confirms on the human's behalf. One proposal per invocation. |
+| 3. Close the loop | [`rsi`](./skills/rsi/) | Diagnose and hill-climb AI behavior from observed traces through one durable server-side controller. No polling or promotion. |
 | Ongoing | [`usage-audit`](./skills/usage-audit/) | Cost-per-task visibility. Runs alongside every other stage, not sequential. |
 
 Everything past Stage 0 assumes `connect` has already run: the CLI is
@@ -59,7 +60,7 @@ frontmatter as `metadata.category`.
 
 | Category | Runtime contract | Count |
 |---|---|---|
-| `operator` | Needs the `stimulir` CLI and a `~/.stimulir` session on the caller's machine. Shells out to the CLI rather than reimplementing REST auth. No vault injection. | 10 |
+| `operator` | Needs the `stimulir` CLI and a `~/.stimulir` session on the caller's machine. Shells out to the CLI rather than reimplementing REST auth. No vault injection. | 11 |
 | `managed` | Runs inside the Stimulir sandbox with the workspace vault injected into its environment. No CLI session. Hard-bounded at four agent turns by the sandbox runner, so anything long has to be resumable a step at a time. | 4 |
 | `loop` | Carries state across invocations against a console-side run row, champion pointer and iteration budget. Exactly one iteration per invocation. | 1 |
 
@@ -87,7 +88,9 @@ So a `loop` skill turns the crank once and returns. It never decides the
 lineage is finished, it never polls for a result, and it never invokes another
 skill. Deciding when to stop and calling the next skill are the two things
 this repo refuses in nine places, most sharply at
-`prompt-versioning/SKILL.md:258-261`. When the budget is spent the API refuses
+`prompt-versioning/SKILL.md:258-261`. The `rsi` operator skill is different:
+it issues one action to a durable server-side controller, which owns the loop
+without holding the coding agent open. When the budget is spent the API refuses
 the next branch, and that refusal is the stop signal. If more iterations are
 wanted, the caller invokes the skill again, having read the last result. There
 is no `--max-iterations` flag, because a skill that held one would be holding
@@ -123,10 +126,10 @@ frontmatter field can come back then, meaning something.
 npx skills add stimulir/skills
 ```
 
-Eight of the fifteen skills are standard-library only. Their helpers shell
+Nine of the sixteen skills need no Python dependencies. Their instructions or helpers shell
 out to the `stimulir` CLI rather than reimplementing REST auth, so there is no
 `uv sync` to run for `connect`, `migrate-inference`, `byok-register`,
-`capture-traces`, `prompt-versioning`, `eval-run`, `eval-iterate`, or
+`capture-traces`, `prompt-versioning`, `eval-run`, `eval-iterate`, `rsi`, or
 `eval-promote`.
 
 The rest call an API directly and need dependencies:
@@ -158,7 +161,7 @@ Then point your host at the skill directories you want:
 
 ```bash
 for s in connect migrate-inference byok-register voice-modalities capture-traces \
-         privacy-layer prompt-versioning eval-run eval-iterate eval-promote usage-audit \
+         privacy-layer prompt-versioning eval-run eval-iterate eval-promote rsi usage-audit \
          web-scrape deep-research opposition-enrich scenario-simulate; do
   ln -s ~/Developer/stimulir-skills/skills/$s ~/.claude/skills/$s
 done
@@ -204,6 +207,7 @@ stimulir-skills/
     ├── eval-run/
     ├── eval-iterate/
     ├── eval-promote/
+    ├── rsi/
     ├── usage-audit/
     ├── web-scrape/
     ├── deep-research/
@@ -217,5 +221,6 @@ stimulir-skills/
         └── helpers/
 ```
 
-Each skill owns its own `pyproject.toml`. There is intentionally no
-repo-root `uv sync` entrypoint.
+Skills with Python helpers own their own `pyproject.toml`. `rsi` needs only its
+instructions and discovery metadata. There is intentionally no repo-root
+`uv sync` entrypoint.
