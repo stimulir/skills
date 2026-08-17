@@ -9,25 +9,27 @@ metadata:
 
 Turn a short improvement request into one action against Stimulir's durable
 RSI controller. The controller owns immutable-cohort selection, baseline and
-candidate measurement, lineage memory, comparability, rejection gates and the
-iteration cap. In this explicit-proposer release, the coding agent diagnoses a
-completed measurement and supplies one rationale plus one complete candidate
-prompt when resuming. Do not reproduce eval construction or lineage mechanics.
+candidate measurement, diagnosis, candidate proposals, lineage memory,
+comparability, rejection gates and the iteration cap. Do not reproduce eval
+construction, proposal generation or lineage mechanics.
 
 ## Resolve the target safely
 
 Work from the adopter repository. Read its Stimulir environment and project
-configuration without printing secrets. Resolve the requested API base,
-workspace and project, then compare them with the active CLI context before
-spending anything.
+configuration without printing secrets. Prefer the adopter application's
+`STIMULIR_API_KEY`, API base and project over any saved human CLI login. Locate
+the nearest relevant dotenv file (for example `backend/.env`) and pass it with
+`--env-file`; do not source it or place its values in command arguments.
 
+- A workspace-pinned application key does not require a separate workspace
+  export or `stimulir login`; the server derives its workspace from the key.
 - Refuse an API-base, workspace or project mismatch.
 - Never silently fall back between production and staging.
 - When the user says production, require the production API base.
-- If context is missing or unauthorized, report the exact mismatch and stop.
+- If app context is missing or unauthorized, report the exact mismatch and
+  stop. Do not repair it by switching an ambient human login.
 
-Assume `connect` has already installed and authenticated the CLI. Do not invoke
-that or any other skill from this skill.
+Do not invoke `connect` or any other skill from this skill.
 
 ## Choose exactly one action
 
@@ -35,13 +37,17 @@ Map the user's request to one command:
 
 | Intent | Command |
 |---|---|
-| Start a diagnosis or hill climb | `stimulir lab rsi run` |
-| Read compact progress | `stimulir lab rsi status <rsi-run-id>` |
-| Inspect lineage and diagnoses | `stimulir lab rsi overview <rsi-run-id>` |
-| Continue a ready run | `stimulir lab rsi resume <rsi-run-id> --rationale "..." --prompt-file <file>` |
+| Start a diagnosis or hill climb | `stimulir lab rsi run --env-file <adopter-env>` |
+| Read compact progress | `stimulir lab rsi status <rsi-run-id> --env-file <adopter-env>` |
+| Inspect lineage and diagnoses | `stimulir lab rsi overview <rsi-run-id> --env-file <adopter-env>` |
+| Continue a ready run | `stimulir lab rsi continue <rsi-run-id> --env-file <adopter-env>` |
 
 Use `--help` to confirm the installed CLI's exact arguments. Do not guess an
 unsupported flag or bypass the CLI with direct REST calls.
+
+The server owns proposer mechanics. Never ask the user to invent a rationale,
+create a prompt file, export a workspace, or repeat the CLI sequence manually.
+Only pass `--instruction` when the user supplied a real constraint.
 
 ## Defaults
 
