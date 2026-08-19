@@ -32,7 +32,7 @@ the nearest relevant dotenv file (for example `backend/.env`) and pass it with
 
 Do not invoke `connect` or any other skill from this skill.
 
-## Choose exactly one action
+## Choose the action
 
 Map the user's request to one command:
 
@@ -41,7 +41,8 @@ Map the user's request to one command:
 | Start a diagnosis or hill climb | `stimulir lab rsi run --env-file <adopter-env>` |
 | Read compact progress | `stimulir lab rsi status <rsi-run-id> --env-file <adopter-env>` |
 | Inspect lineage and diagnoses | `stimulir lab rsi overview <rsi-run-id> --env-file <adopter-env>` |
-| Continue a ready run | `stimulir lab rsi continue <rsi-run-id> --env-file <adopter-env>` |
+| Read the terminal outcome | `stimulir lab rsi results <rsi-run-id> --env-file <adopter-env>` |
+| Add an operator constraint when input is required | `stimulir lab rsi continue <rsi-run-id> --env-file <adopter-env>` |
 
 Use `--help` to confirm the installed CLI's exact arguments. Do not guess an
 unsupported flag or bypass the CLI with direct REST calls.
@@ -87,10 +88,31 @@ Unless the user says otherwise:
 Starting or resuming can spend inference and judging budget. Report any spend
 or blocker returned by the controller. Status and overview are read-only.
 
+## Monitor only when requested
+
+When the user says `wait until done`, `stay with it`, `babysit`, `keep
+checking`, or otherwise explicitly asks for a terminal outcome, keep the agent
+turn active and monitor automatically:
+
+1. Start once, retain the returned RSI id, and use `status` every 30-60 seconds.
+2. Make each check quick and non-blocking. Never use `watch`, `tail -f`, a
+   streaming shell command, or a blocking task-output call.
+3. Heed `agent_guidance`, `recommended_check_seconds`, `terminal`, and typed
+   blockers. Prioritize any new user message before the next check.
+4. Do not call `continue` for normal iteration advancement. The durable server
+   controller owns baseline -> diagnosis -> proposal -> comparison -> stopping.
+5. Stop monitoring at `completed`, `needs_input`, `failed`, or `stopped`. On
+   `completed`, call `results` once and report the evidence. On `needs_input`,
+   return the exact blocker and ask only for the missing decision.
+
+Monitoring is observational. If the agent process disconnects, the controller
+must continue server-side and a later invocation can resume monitoring by id.
+
 ## Boundaries
 
-- Execute one RSI command per invocation, then return.
-- Never poll, wait in a loop or recursively resume.
+- Default starts execute one RSI command and detach. Explicit terminal-intent
+  requests may perform the bounded non-blocking monitoring sequence above.
+- Never recursively resume or use agent polling to drive normal iterations.
 - Never invoke `capture-traces`, `privacy-layer`, `eval-run`, `eval-iterate`,
   `eval-promote`, `prompt-versioning` or another skill.
 - Never manually create a data asset, Lab folder, snapshot, eval or derive
