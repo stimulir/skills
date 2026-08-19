@@ -1,9 +1,9 @@
 {
   "name": "stimulir-skills",
   "version": "0.1.0",
-  "description": "Stimulir Skills — client-onboarding agent skills for integrating the Stimulir AI gateway.",
+  "description": "Operator skills for connecting adopter repositories to Stimulir and running evidence-backed improvement workflows.",
   "repository": "https://github.com/stimulir/skills",
-  "keywords": ["stimulir", "ai-gateway", "onboarding", "inference", "byok", "privacy", "data-assets", "eval", "rsi", "prompts", "usage"],
+  "keywords": ["stimulir", "operator-skills", "ai-gateway", "onboarding", "inference", "privacy", "traces", "eval", "rsi", "prompts", "usage"],
   "skills": "./skills/",
   "interface": {
     "displayName": "Stimulir Skills",
