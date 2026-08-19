@@ -1,7 +1,7 @@
 interface:
   display_name: "RSI"
-  short_description: "Diagnose and hill-climb AI behavior"
-  default_prompt: "Use $rsi to run diagnostic RSI on this project using the last 30 days of production traces tagged assessment, without promoting changes."
+  short_description: "Diagnose and monitor AI improvement"
+  default_prompt: "Use $rsi to run diagnostic RSI on this project using the last 30 days of production traces tagged assessment. Monitor it to a terminal state and do not promote changes."
 
 policy:
   allow_implicit_invocation: true
