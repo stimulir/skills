@@ -29,6 +29,10 @@ the nearest relevant dotenv file (for example `backend/.env`) and pass it with
 - When the user says production, require the production API base.
 - If app context is missing or unauthorized, report the exact mismatch and
   stop. Do not repair it by switching an ambient human login.
+- Durable RSI inference also requires an active, non-expired API key bound to
+  the exact project. Preserve `tenant_inference_api_key_required` as a typed
+  preflight blocker; do not substitute a workspace-wide or different-project
+  key.
 
 Do not invoke `connect` or any other skill from this skill.
 
@@ -51,6 +55,8 @@ The minimum questions, when genuinely unresolved, are:
 1. Which workflow/tag or prompt is in scope?
 2. Which date window, named cohort, or count should be used?
 3. Should RSI test the prompt only, models only, or both?
+4. Which published evaluator should score the run and, for an LLM evaluator,
+   which exact workspace-accessible judge provider/model should execute it?
 
 Imported open-source benchmark records are reference evidence, not observed
 model inference. When inspect reports `cohort_kind=open_source_benchmark`, show
@@ -61,15 +67,30 @@ dataset publisher/reference label an inference model. For
 `cohort_kind=production_inference`, never pass a baseline override: the server
 must reconstruct the incumbent from trace evidence.
 
+Some imported sources are intentionally source evidence only. If inspection
+returns `benchmark_executor_required`, report the named executor (for example a
+sandbox treatment/validator runner) and do not present the pack as runnable or
+substitute a generic chat evaluator.
+
 Then run the read-only preview with the resolved selectors:
 
 ```bash
 stimulir lab rsi preview --env-file <adopter-env> <resolved-options>
 ```
 
+Preview must precede a new run. Select the evaluator by exact id or by key and
+version. If its type requires an LLM judge, select an exact provider/model from
+the inspection options. Pass the same `--evaluator-id` (or
+`--evaluator-key`/`--evaluator-version`) and `--judge-provider`/`--judge-model`
+to preview and run. Never allow a hidden `hybrie-small`, `hybrie-mid`, or
+`hybrie-large` judge default. Preserve `rsi_evaluator_required`,
+`rsi_evaluator_unresolved`, `rsi_judge_required`, `rsi_judge_unresolved`, and
+`rsi_judge_unavailable` blockers instead of starting with partial scoring.
+
 Preview must precede a new run. Summarize total, matched, privacy-eligible and
 selected counts; sampling policy; inferred incumbent provider/model and prompt
-key/version; evaluator; candidate models; estimated cost and duration; and all
+key/version; evaluator and exact judge route; configured proposer route;
+candidate models; estimated cost and duration; and all
 typed ambiguities. Never start when `runnable` is false, even if the user asks
 to proceed; return the typed blockers and resolve or re-preview instead. A
 preview spends no RSI inference budget and never promotes.
@@ -170,6 +191,13 @@ admitted by workspace policy. Pass an explicit candidate as repeated
 the workspace exposes it and the user allows it. `hybrie-small`,
 `hybrie-mid`, and `hybrie-large` are not defaults and must never be invented.
 
+Candidate, judge and proposer calls execute through the project's canonical
+tenant inference route. Vendor providers require a current workspace BYOK
+credential and must fail closed instead of falling through to managed billing.
+Managed Stimulir routes require both workspace availability and the user's
+explicit `--allow-managed-inference` approval. Historical trace provenance is
+evidence for the incumbent, never proof that a provider is still authorized.
+
 The baseline is the provider, model, prompt key and prompt version reconstructed
 from the selected production traces. Never pass or imply a fallback baseline.
 Preserve `baseline_model_unresolved`, mixed-incumbent and prompt ambiguity
@@ -199,8 +227,16 @@ Unless the user says otherwise:
 - do not promote, relabel or edit application code;
 - detach after the run command returns.
 
-Starting or resuming can spend inference and judging budget. Report any spend
-or blocker returned by the controller. Status and overview are read-only.
+Starting or resuming can spend candidate inference, judge/jury, and proposer
+budget. Report measured spend, whether accounting is complete, its pricing
+confidence, and every unpriced component. Never turn missing usage into £0 or
+continue a budgeted hill climb after `cost_accounting_incomplete`. Status and
+overview are read-only.
+
+A finite `--budget-gbp` is a hard ceiling, not a suggestion. If preview returns
+`rsi_budget_unenforceable` because the full candidate + judge + proposer plan
+cannot be priced, do not remove the budget silently. Ask whether the user wants
+to proceed explicitly unbounded, change to a fully priceable route, or stop.
 
 ## Monitor only when requested
 
@@ -263,7 +299,9 @@ Do not print the full preview token; report only that it was bound. Preserve any
 blocker returned by the controller, especially
 `no_matching_traces`, `all_traces_excluded`, `prompt_target_ambiguous`,
 `baseline_model_unresolved`, `privacy_processing_failed`, and
-`budget_exhausted`. If a field is not yet
+`rsi_evaluator_required`, `rsi_judge_required`,
+`benchmark_executor_required`, `rsi_budget_unenforceable`,
+`cost_accounting_incomplete`, and `budget_exhausted`. If a field is not yet
 available, say so rather than inventing it. Do not claim improvement until
 comparable completed evidence supports it, and explicitly confirm that no
 promotion occurred.
