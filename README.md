@@ -15,9 +15,9 @@ use [`stimulir/managed-skills`](https://github.com/stimulir/managed-skills).
 
 | Stage | Skill | Responsibility |
 |---|---|---|
-| 0. Connect | [`connect`](./skills/connect/) | Install the CLI, authenticate safely, send a real call, and confirm cost visibility. |
+| 0. Connect | [`connect`](./skills/connect/) | Install the CLI and establish authenticated workspace context without handling credentials or spend. |
 | 1. Migrate | [`migrate-inference`](./skills/migrate-inference/) | Replace direct provider calls in an adopter application with the Stimulir SDK or compatible gateway. |
-| 1. Migrate | [`byok-register`](./skills/byok-register/) | Register and verify an adopter's existing provider credential. |
+| 1. Migrate | [`byok-register`](./skills/byok-register/) | Hand secret entry to the Console, then inspect and verify the non-secret credential record. |
 | 1. Voice | [`voice-modalities`](./skills/voice-modalities/) | Generate speech, transcribe audio, run realtime voice, or integrate the voice lane. |
 | 2. Protect | [`privacy-layer`](./skills/privacy-layer/) | De-identify sensitive text before persistence or forwarding. |
 | 2. Capture | [`capture-traces`](./skills/capture-traces/) | Turn live traffic into curated, immutable data assets. |
@@ -31,7 +31,7 @@ use [`stimulir/managed-skills`](https://github.com/stimulir/managed-skills).
 The normal sequence is:
 
 ```text
-connect → migrate → privacy → capture → version → evaluate or RSI → review → promote
+connect → human credential setup if needed → migrate → privacy → capture → version → evaluate or RSI → review → promote
 ```
 
 Promotion is intentionally separate. Capture, evaluation, iteration, and RSI

@@ -2,8 +2,7 @@
 """Verify a registered BYOK credential against its upstream provider.
 
 Wraps `stimulir byok verify <credential_id> --json`. Read-only, safe,
-idempotent -- no confirmation gate needed (unlike register_byok.py, this
-never creates or deletes anything). Reports a normalized pass/fail JSON
+idempotent -- it never creates or deletes anything. Reports a normalized pass/fail JSON
 object so the calling agent can branch on the outcome without parsing CLI
 prose.
 """
@@ -23,7 +22,7 @@ def main() -> None:
         raise SystemExit(
             "verify_byok.py: `stimulir` CLI not found on PATH. This skill assumes "
             "`connect` has already run (CLI installed + authenticated + workspace "
-            "selected) -- see install.md."
+            "selected)."
         )
 
     cmd = ["stimulir", "byok", "verify", args.credential_id, "--json"]

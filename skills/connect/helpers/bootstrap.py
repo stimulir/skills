@@ -11,11 +11,11 @@ exists" alone is not "ready"). It never calls `stimulir workspace use <id>`
 itself, even when there's only one candidate to pick.
 
 It NEVER runs any of the following, because each either requires interactive
-human input or mutates remote/local state:
+human input, mutates state, handles a credential, or can incur spend:
     stimulir login                  (device-flow browser interaction)
-    stimulir login --token <token>  (the caller must supply the token)
     stimulir workspace use <id>     (mutates the CLI's local selection)
-    stimulir keys create ...        (creates a real, billable credential)
+    any credential creation command
+    any inference or usage command
 
 Instead, for each gate that isn't already satisfied, this helper stops and
 returns a `next_command` string -- the exact command a human (or the agent,
@@ -59,8 +59,8 @@ def next_step(report: dict) -> dict:
             "reason": (
                 "Not authenticated (or the cached 30-day session expired). "
                 "This is an interactive device-flow login -- run it yourself, "
-                "this helper will not attempt it for you. For headless/CI use: "
-                "stimulir login --token <token>"
+                "this helper will not attempt it for you. For headless or CI "
+                "environments, complete authentication through the Console."
             ),
         }
 
@@ -134,7 +134,7 @@ def bootstrap() -> dict:
     return {
         "checks": report,
         "next_step": step,
-        "ready_for_key_and_smoke_test": step["stage"] == "workspace" and step["done"],
+        "ready": step["stage"] == "workspace" and step["done"],
     }
 
 

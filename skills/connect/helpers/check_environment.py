@@ -10,10 +10,9 @@ active selection (confirmed directly against the file; `workspace list
 table view does, via a `●` column that has no JSON equivalent). Only the
 non-secret `workspace_id` field is read; `~/.stimulir/credentials.json`
 (the cached session token) is never opened by this helper. This helper
-never runs `stimulir login`, `stimulir keys create`, or `stimulir workspace
-use`; those are either interactive (login) or mutate state (workspace use,
-keys create), and both are the agent's call to make after reading this
-report, not this helper's.
+never runs login, workspace mutation, credential creation, inference, or
+usage commands. Interactive or mutating actions remain visible human steps;
+credential and billable actions are outside this skill entirely.
 
 Exit code is always 0 if the checks themselves ran without crashing -- a
 missing CLI or missing auth is a normal, expected finding, not a helper
