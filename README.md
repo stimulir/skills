@@ -74,24 +74,9 @@ done
 
 Use `~/.claude/skills` instead for Claude Code.
 
-Nine packages need no Python installation because they use the installed
-Stimulir CLI directly: `connect`, `migrate-inference`, `byok-register`,
-`capture-traces`, `prompt-versioning`, `eval-run`, `eval-iterate`,
-`eval-promote`, and `rsi`.
-
-The remaining packages own their dependencies:
-
-| Skill | Dependency |
-|---|---|
-| `privacy-layer`, `usage-audit` | `httpx` |
-| `voice-modalities` | `stimulir[realtime]` |
-
-```bash
-cd ~/.codex/skills/privacy-layer
-uv sync
-```
-
-There is intentionally no repository-root Python environment.
+All 12 packages use the installed Stimulir CLI. No per-skill Python
+environment or dependency installation is required. The migration scanner is
+standard-library-only and runs locally without network access.
 
 ## Authentication
 

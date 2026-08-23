@@ -15,7 +15,7 @@ indicate a direct OpenAI or Anthropic integration:
     contains `api.openai.com` or `api.anthropic.com`     -> raw-http (host-specific
                                                              sub-category recorded)
 
-Every hit is one JSON object: {file, line, pattern, category, snippet}. The
+Every hit is one JSON object: {file, line, pattern, category}. The
 agent reading migrate-inference's SKILL.md is the one who decides what to do
 with each hit -- this script does not rewrite, comment out, or otherwise
 touch anything it scans. Read-only, no side effects, safe to run repeatedly.
@@ -128,7 +128,7 @@ PATTERNS = [
     ("google-gemini-needs-conversion", "import ... from '@google/genai'",
      re.compile(r"import\s+.*\bfrom\s+['\"]@google/(generative-ai|genai)['\"]")),
 
-    # --- raw-http (host string match, provider recorded in snippet) --------
+    # --- raw-http (host string match) ---------------------------------------
     ("raw-http", "raw HTTP call to api.openai.com",
      re.compile(r"[\"']https?://api\.openai\.com[^\"']*[\"']")),
     ("raw-http", "raw HTTP call to api.anthropic.com",
@@ -178,7 +178,6 @@ def scan_file(path: Path, root: Path) -> list[dict]:
                     "line": lineno,
                     "pattern": pattern_name,
                     "category": category,
-                    "snippet": line.strip()[:300],
                 })
     return hits
 
