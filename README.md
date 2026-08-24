@@ -47,8 +47,9 @@ The catalog contains 12 skills:
 | `loop` | 1 | Advances persisted console-side state by exactly one iteration and returns. |
 
 `rsi` is categorized as an operator because the server owns its durable loop.
-The coding agent issues one `run`, `status`, `overview`, `continue`, or steering
-action; it does not poll or recreate the controller.
+The coding agent starts or resumes the controller once, then performs bounded,
+read-only status checks until the run reaches a terminal or `needs_input`
+state. Monitoring never recreates, advances, steers, or promotes the controller.
 
 The `metadata.category` field is retained as the repository's runtime contract.
 It is not a secret allowlist or a generic metadata namespace.
