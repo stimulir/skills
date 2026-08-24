@@ -50,6 +50,14 @@ request. Do not dump long inventories into the conversation. If inspection
 returns typed ambiguities, ask only the unresolved questions that affect the
 run; do not re-ask facts the user already supplied or that inspection proved.
 
+Act as an optimisation guide, not a CLI form. After inspection, lead with one
+recommended runnable configuration and its rationale. Prefer the narrowest
+safe cohort, `prompt_only`, and the production incumbent reconstructed from
+trace evidence. If the preferred configuration is blocked, lead with the
+nearest runnable alternative (for example, use the 11 eligible prompt-linked
+traces instead of a requested 30) and explain the trade-off. Never return a
+blocker without an actionable recommendation unless no safe alternative exists.
+
 The minimum questions, when genuinely unresolved, are:
 
 1. Which workflow/tag or prompt is in scope?
@@ -87,12 +95,23 @@ to preview and run. Never allow a hidden `hybrie-small`, `hybrie-mid`, or
 `rsi_evaluator_unresolved`, `rsi_judge_required`, `rsi_judge_unresolved`, and
 `rsi_judge_unavailable` blockers instead of starting with partial scoring.
 
+For an LLM evaluator, recommend managed platform route
+`stimulir:claude-opus-4-6` for both judge and proposer when inspection exposes
+that exact route. Prefer it over a vendor BYOK route or a same-family judge.
+The evaluator is the published scoring instruction; the judge is the model
+that executes that instruction; the proposer is the model that creates the
+next controlled candidate. Never imply that the evaluator itself is a model.
+If Opus is unavailable, recommend the highest-capability exact managed route
+returned by inspection, then a workspace-authorized BYOK route. Do not invent
+or abbreviate provider/model identifiers.
+
 Preview must precede a new run. Summarize total, matched, privacy-eligible and
 selected counts; sampling policy; inferred incumbent provider/model and prompt
 key/version; evaluator and exact judge route; configured proposer route;
 candidate models; estimated cost and duration; and all
 typed ambiguities. Never start when `runnable` is false, even if the user asks
-to proceed; return the typed blockers and resolve or re-preview instead. A
+to proceed; return the typed blockers, recommend the closest runnable change,
+and resolve or re-preview instead. A
 preview spends no RSI inference budget and never promotes.
 
 The preview returns `normalized_source`, `cohort_fingerprint`, and
@@ -191,12 +210,37 @@ admitted by workspace policy. Pass an explicit candidate as repeated
 the workspace exposes it and the user allows it. `hybrie-small`,
 `hybrie-mid`, and `hybrie-large` are not defaults and must never be invented.
 
+Recommend experiment modes deliberately:
+
+- `prompt_only`: default first run; hold the production model and cohort fixed
+  while testing prompt candidates.
+- `model_only`: use after prompt optimisation when the user wants a controlled
+  quality, latency or cost comparison; recommend only executable candidates
+  returned by inspection.
+- `prompt_and_model`: use only when interaction effects are the question, and
+  report prompt and model effects separately.
+
+If the user asks to compare prompt versions, stay inside RSI. Inspect the exact
+versions and compare their content before proposing a run. When versions are
+identical, say that a v2-v3 comparison would measure inference variance rather
+than a prompt change, and recommend the production version versus the RSI
+controller's next content-distinct candidate on the same cohort and incumbent
+model. Never invoke `eval-run`, ask the user to capture/clean data manually, or
+claim that a reviewed Lab asset is a prerequisite. When versions differ, use
+the RSI controller's version-comparison capability exposed by the installed
+CLI/server; if it is absent, report an upgrade requirement and keep the task in
+RSI rather than substituting another workflow.
+
 Candidate, judge and proposer calls execute through the project's canonical
 tenant inference route. Vendor providers require a current workspace BYOK
 credential and must fail closed instead of falling through to managed billing.
 Managed Stimulir routes require both workspace availability and the user's
 explicit `--allow-managed-inference` approval. Historical trace provenance is
 evidence for the incumbent, never proof that a provider is still authorized.
+Treat the user's explicit standing instruction to use Stimulir managed/platform
+inference as approval for this flag in the current task. Otherwise present the
+recommended managed route and request approval once, together with the complete
+run preview; never obtain approval one parameter at a time.
 
 The baseline is the provider, model, prompt key and prompt version reconstructed
 from the selected production traces. Never pass or imply a fallback baseline.
@@ -224,8 +268,9 @@ Unless the user says otherwise:
 - honor the requested source window and exact trace filters;
 - use deterministic, explicit count/sampling controls when the user supplied a count;
 - keep model exploration off unless requested or approved;
+- recommend `stimulir:claude-opus-4-6` for judge and proposer when available;
 - do not promote, relabel or edit application code;
-- detach after the run command returns.
+- monitor every started or resumed run to a terminal or `needs_input` state.
 
 Starting or resuming can spend candidate inference, judge/jury, and proposer
 budget. Report measured spend, whether accounting is complete, its pricing
@@ -238,11 +283,10 @@ A finite `--budget-gbp` is a hard ceiling, not a suggestion. If preview returns
 cannot be priced, do not remove the budget silently. Ask whether the user wants
 to proceed explicitly unbounded, change to a fully priceable route, or stop.
 
-## Monitor only when requested
+## Always monitor to an outcome
 
-When the user says `wait until done`, `stay with it`, `babysit`, `keep
-checking`, or otherwise explicitly asks for a terminal outcome, keep the agent
-turn active and monitor automatically:
+After starting or resuming RSI, keep the agent turn active and monitor
+automatically:
 
 1. Start once, retain the returned RSI id, and use `status` at the server's
    `recommended_check_seconds` interval (30-60 seconds when absent).
@@ -259,7 +303,7 @@ turn active and monitor automatically:
 Monitoring is observational. If the agent process disconnects, the controller
 must continue server-side and a later invocation can resume monitoring by id.
 
-When the host supports subagents, terminal intent may be delegated to one
+When the host supports subagents, monitoring may be delegated to one
 watcher subagent. Give it only the RSI id, adopter env-file path, resolved
 project/environment, and this observational protocol. It may call `status`,
 then `results` once at completion; it must not call `continue`, mutate the run,
@@ -270,8 +314,8 @@ bounded non-blocking checks. The workflow must never require subagent support.
 
 ## Boundaries
 
-- Default starts execute one RSI command and detach. Explicit terminal-intent
-  requests may perform the bounded non-blocking monitoring sequence above.
+- Never detach merely because the start command returned. Monitor every started
+  or resumed run using the bounded non-blocking sequence above.
 - Never recursively resume or use agent polling to drive normal iterations.
 - Never invoke `capture-traces`, `privacy-layer`, `eval-run`, `eval-iterate`,
   `eval-promote`, `prompt-versioning` or another skill.
@@ -315,3 +359,14 @@ candidates and reasons; and the next human review step. Do not attribute a
 prompt gain to a simultaneous model change. If interrupted, return the stable
 RSI id, state, console link and exact `status`/`results` commands so another
 agent invocation can resume the handoff without restarting the run.
+
+When comparable completed evidence supports a candidate, lead with a concrete
+recommendation: promote, run one more controlled experiment, or reject. State
+the exact quality, cost and latency evidence and the proposed prompt/model
+version. Promotion remains disabled during diagnostic RSI. Explain that the UI
+promotion control is unavailable until the controller has minted a reviewable
+proposal; do not present this as a failed run. Offer the next explicit,
+human-gated promotion-review action, but never click, call, or apply promotion
+from this skill. If no proposal exists, recommend the controller action needed
+to create comparable proposal evidence rather than sending the user into a
+manual Lab workflow.
