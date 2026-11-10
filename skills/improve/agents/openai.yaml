@@ -1,0 +1,7 @@
+interface:
+  display_name: "Improve"
+  short_description: "Diagnose and monitor AI improvement"
+  default_prompt: "Use $improve to diagnose this project using the last 30 days of production traces tagged assessment. Monitor the run to a terminal state and do not promote changes."
+
+policy:
+  allow_implicit_invocation: true

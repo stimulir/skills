@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "description": "Operator skills for connecting adopter repositories to Stimulir and running evidence-backed improvement workflows.",
   "repository": "https://github.com/stimulir/skills",
-  "keywords": ["stimulir", "operator-skills", "ai-gateway", "onboarding", "inference", "privacy", "traces", "eval", "rsi", "prompts", "usage"],
+  "keywords": ["stimulir", "operator-skills", "ai-gateway", "onboarding", "inference", "privacy", "traces", "eval", "improve", "prompts", "usage"],
   "skills": "./skills/",
   "interface": {
     "displayName": "Stimulir Skills",
@@ -13,7 +13,7 @@
       "Connect this project to Stimulir and run a smoke test",
       "Migrate our OpenAI calls to route through Stimulir's gateway",
       "Set up PII redaction before we capture traces",
-      "Run diagnostic RSI on this project using today's production traces; do not promote"
+      "Run Improve on this project using today's production traces; do not promote"
     ]
   }
 }

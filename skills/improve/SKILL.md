@@ -1,14 +1,14 @@
 ---
-name: rsi
-description: Diagnose and measurably improve an application's AI behavior from Stimulir traces using a durable server-side hill climb. Use when the user says RSI; asks to diagnose production failures; wants to improve a prompt from observed traffic; wants to hill-climb quality, latency, or cost; or asks to start, continue, steer, inspect, or review an RSI run.
+name: improve
+description: Diagnose and measurably improve an application's AI behavior from Stimulir traces using a durable server-side hill climb. Use when the user says Improve or the legacy name RSI; asks to diagnose production failures; wants to improve a prompt from observed traffic; wants to hill-climb quality, latency, or cost; or asks to start, continue, steer, inspect, or review an Improve run.
 metadata:
   category: operator
 ---
 
-# RSI
+# Improve
 
 Turn a short improvement request into a guided workflow against Stimulir's
-durable RSI controller. Starting from production traces, the controller owns
+durable Improve controller. Starting from production traces, the controller owns
 trace selection, privacy and eligibility processing, immutable snapshot creation or
 reuse, Lab handoff, baseline and candidate measurement, diagnosis, proposals,
 lineage memory, comparability, rejection gates and the iteration cap. Do not
@@ -29,7 +29,7 @@ the nearest relevant dotenv file (for example `backend/.env`) and pass it with
 - When the user says production, require the production API base.
 - If app context is missing or unauthorized, report the exact mismatch and
   stop. Do not repair it by switching an ambient human login.
-- Durable RSI inference also requires an active, non-expired API key bound to
+- Durable Improve inference also requires an active, non-expired API key bound to
   the exact project. Preserve `tenant_inference_api_key_required` as a typed
   preflight blocker; do not substitute a workspace-wide or different-project
   key.
@@ -41,7 +41,7 @@ Do not invoke `connect` or any other skill from this skill.
 For a new diagnosis, first run the broad read-only inspection:
 
 ```bash
-stimulir lab rsi inspect --env-file <adopter-env>
+stimulir lab improve inspect --env-file <adopter-env>
 ```
 
 Use its searchable tag, prompt and model distributions, named folders,
@@ -62,7 +62,7 @@ The minimum questions, when genuinely unresolved, are:
 
 1. Which workflow/tag or prompt is in scope?
 2. Which date window, named cohort, or count should be used?
-3. Should RSI test the prompt only, models only, or both?
+3. Should Improve test the prompt only, models only, or both?
 4. Which published evaluator should score the run and, for an LLM evaluator,
    which exact workspace-accessible judge provider/model should execute it?
 
@@ -83,7 +83,7 @@ substitute a generic chat evaluator.
 Then run the read-only preview with the resolved selectors:
 
 ```bash
-stimulir lab rsi preview --env-file <adopter-env> <resolved-options>
+stimulir lab improve preview --env-file <adopter-env> <resolved-options>
 ```
 
 Preview must precede a new run. Select the evaluator by exact id or by key and
@@ -112,7 +112,7 @@ candidate models; estimated cost and duration; and all
 typed ambiguities. Never start when `runnable` is false, even if the user asks
 to proceed; return the typed blockers, recommend the closest runnable change,
 and resolve or re-preview instead. A
-preview spends no RSI inference budget and never promotes.
+preview spends no Improve inference budget and never promotes.
 
 The preview returns `normalized_source`, `cohort_fingerprint`, and
 `preview_token`. Treat all three as one integrity-bound handoff. For `run`,
@@ -126,11 +126,11 @@ report that the CLI/server must be upgraded and do not start.
 SDK callers must pass the complete preview handoff:
 
 ```python
-preview = client.rsi.preview(<resolved selectors>)
+preview = client.improve.preview(<resolved selectors>)
 if not preview["runnable"]:
-    raise RuntimeError(preview.get("blockers") or "RSI preview is not runnable")
+    raise RuntimeError(preview.get("blockers") or "Improve preview is not runnable")
 
-started = client.rsi.run(
+started = client.improve.run(
     normalized_source=preview["normalized_source"],
     cohort_fingerprint=preview["cohort_fingerprint"],
     preview_token=preview["preview_token"],
@@ -145,20 +145,20 @@ Map the user's request to one command:
 
 | Intent | Command |
 |---|---|
-| Inspect available project inputs | `stimulir lab rsi inspect --env-file <adopter-env>` |
-| Preview a resolved run without spend | `stimulir lab rsi preview --env-file <adopter-env>` |
-| Start a diagnosis or hill climb | `stimulir lab rsi run --env-file <adopter-env>` |
-| Read compact progress | `stimulir lab rsi status <rsi-run-id> --env-file <adopter-env>` |
-| Inspect lineage and diagnoses | `stimulir lab rsi overview <rsi-run-id> --env-file <adopter-env>` |
-| Read the terminal outcome | `stimulir lab rsi results <rsi-run-id> --env-file <adopter-env>` |
-| Add an operator constraint when input is required | `stimulir lab rsi continue <rsi-run-id> --env-file <adopter-env>` |
+| Inspect available project inputs | `stimulir lab improve inspect --env-file <adopter-env>` |
+| Preview a resolved run without spend | `stimulir lab improve preview --env-file <adopter-env>` |
+| Start a diagnosis or hill climb | `stimulir lab improve run --env-file <adopter-env>` |
+| Read compact progress | `stimulir lab improve status <improve-run-id> --env-file <adopter-env>` |
+| Inspect lineage and diagnoses | `stimulir lab improve overview <improve-run-id> --env-file <adopter-env>` |
+| Read the terminal outcome | `stimulir lab improve results <improve-run-id> --env-file <adopter-env>` |
+| Add an operator constraint when input is required | `stimulir lab improve continue <improve-run-id> --env-file <adopter-env>` |
 
 Use `--help` to confirm the installed CLI's exact arguments. Do not guess an
 unsupported flag or bypass the CLI with direct REST calls.
 
 For preview and start, translate source scope into the matching command options:
 
-| User language | RSI argument |
+| User language | Improve argument |
 |---|---|
 | today | `--source-window today` |
 | last month, one month, last 30 days | `--source-window 30d` |
@@ -172,21 +172,21 @@ For preview and start, translate source scope into the matching command options:
 | traces generated by model `x` | `--source-model x` |
 
 Treat each requested trace tag as an exact source-trace filter. `--trace-tag`
-filters the cohort; `--tag` only labels the RSI run and must not be substituted
+filters the cohort; `--tag` only labels the Improve run and must not be substituted
 for it. Preserve multiple explicitly requested trace tags as repeated
 `--trace-tag` arguments. For example:
 
 ```bash
-stimulir lab rsi preview --env-file <adopter-env> \
+stimulir lab improve preview --env-file <adopter-env> \
   --source-window 30d --trace-tag assessment --prompt auto \
   --max-iterations 1
 ```
 
 When preview is runnable, use its normalized exact bounds and selectors with
-`rsi run` once, binding the run to that exact preview:
+`improve run` once, binding the run to that exact preview:
 
 ```bash
-stimulir lab rsi run --env-file <adopter-env> \
+stimulir lab improve run --env-file <adopter-env> \
   <normalized exact source options> \
   --cohort-fingerprint <preview.cohort_fingerprint> \
   --preview-token <preview.preview_token> \
@@ -220,16 +220,16 @@ Recommend experiment modes deliberately:
 - `prompt_and_model`: use only when interaction effects are the question, and
   report prompt and model effects separately.
 
-If the user asks to compare prompt versions, stay inside RSI. Inspect the exact
+If the user asks to compare prompt versions, stay inside Improve. Inspect the exact
 versions and compare their content before proposing a run. When versions are
 identical, say that a v2-v3 comparison would measure inference variance rather
-than a prompt change, and recommend the production version versus the RSI
+than a prompt change, and recommend the production version versus the Improve
 controller's next content-distinct candidate on the same cohort and incumbent
 model. Never invoke `eval-run`, ask the user to capture/clean data manually, or
 claim that a reviewed Lab asset is a prerequisite. When versions differ, use
-the RSI controller's version-comparison capability exposed by the installed
+the Improve controller's version-comparison capability exposed by the installed
 CLI/server; if it is absent, report an upgrade requirement and keep the task in
-RSI rather than substituting another workflow.
+Improve rather than substituting another workflow.
 
 Candidate, judge and proposer calls execute through the project's canonical
 tenant inference route. Vendor providers require a current workspace BYOK
@@ -285,10 +285,10 @@ to proceed explicitly unbounded, change to a fully priceable route, or stop.
 
 ## Always monitor to an outcome
 
-After starting or resuming RSI, keep the agent turn active and monitor
+After starting or resuming Improve, keep the agent turn active and monitor
 automatically:
 
-1. Start once, retain the returned RSI id, and use `status` at the server's
+1. Start once, retain the returned Improve id, and use `status` at the server's
    `recommended_check_seconds` interval (30-60 seconds when absent).
 2. Make each check quick and non-blocking. Never use `watch`, `tail -f`, a
    streaming shell command, or a blocking task-output call.
@@ -304,7 +304,7 @@ Monitoring is observational. If the agent process disconnects, the controller
 must continue server-side and a later invocation can resume monitoring by id.
 
 When the host supports subagents, monitoring may be delegated to one
-watcher subagent. Give it only the RSI id, adopter env-file path, resolved
+watcher subagent. Give it only the Improve id, adopter env-file path, resolved
 project/environment, and this observational protocol. It may call `status`,
 then `results` once at completion; it must not call `continue`, mutate the run,
 promote, or reinterpret evidence. The parent agent remains responsible for
@@ -320,7 +320,7 @@ bounded non-blocking checks. The workflow must never require subagent support.
 - Never invoke `capture-traces`, `privacy-layer`, `eval-run`, `eval-iterate`,
   `eval-promote`, `prompt-versioning` or another skill.
 - Never manually create a data asset, Lab folder, snapshot, eval or derive
-  stage. A missing immutable snapshot is not a user prerequisite: the RSI
+  stage. A missing immutable snapshot is not a user prerequisite: the Improve
   controller must create or reuse it from the requested traces. If the server
   still returns that legacy prerequisite, report an incompatible server
   deployment rather than asking the user to perform the workflow manually.
@@ -333,7 +333,7 @@ bounded non-blocking checks. The workflow must never require subagent support.
 
 ## Return
 
-Report the RSI run id and state, resolved environment and project, source
+Report the Improve run id and state, resolved environment and project, source
 window and exact trace filters, matched trace count, eligible and excluded
 counts, immutable snapshot id and whether it was created or reused, target
 prompt, reconstructed incumbent provider/model/prompt version, experiment
@@ -357,13 +357,13 @@ which controlled prompt-only/model-only/combined experiments ran; quality,
 cost and latency deltas against the exact production incumbent; rejected
 candidates and reasons; and the next human review step. Do not attribute a
 prompt gain to a simultaneous model change. If interrupted, return the stable
-RSI id, state, console link and exact `status`/`results` commands so another
+Improve id, state, console link and exact `status`/`results` commands so another
 agent invocation can resume the handoff without restarting the run.
 
 When comparable completed evidence supports a candidate, lead with a concrete
 recommendation: promote, run one more controlled experiment, or reject. State
 the exact quality, cost and latency evidence and the proposed prompt/model
-version. Promotion remains disabled during diagnostic RSI. Explain that the UI
+version. Promotion remains disabled during an Improve diagnostic run. Explain that the UI
 promotion control is unavailable until the controller has minted a reviewable
 proposal; do not present this as a failed run. Offer the next explicit,
 human-gated promotion-review action, but never click, call, or apply promotion
